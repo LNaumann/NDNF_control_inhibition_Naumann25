@@ -1,8 +1,9 @@
 .egg-info
 .DS_Store
-.png
-.pdf
-.jpg
-.eps
-.tif
-.afdesign
+results/figs
+*.png
+*.pdf
+*.jpg
+*.eps
+*.tif
+*.afdesign
