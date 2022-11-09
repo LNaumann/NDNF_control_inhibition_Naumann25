@@ -9,6 +9,12 @@ plt.style.use('pretty')
 
 # ToDo: make experiments classes?
 
+# colours
+cPC = '#B83D49'
+cPV = '#345377'
+cSOM = '#5282BA'
+cNDNF = '#E18E69'
+cVIP = '#D1BECF'
 
 def ex_activation_inactivation():
     """
@@ -103,8 +109,8 @@ def fig1_paired_recordings_invitro(dur=300, dt=1):
                                                         rE0=0, rD0=0, rN0=0, rS0=0, rP0=0)
 
         # plotting and labels
-        ax[0, i].plot(t[1:], other['curr_rS'], 'C0')
-        ax[1, i].plot(t[1:], other['curr_rN'], 'C1')
+        ax[0, i].plot(t[1:], other['curr_rS'], c=cSOM)
+        ax[1, i].plot(t[1:], other['curr_rN'], c=cNDNF)
         ax[1, i].set(xlabel='time (ms)', ylim=[-0.1, 3])
     ax[0, 0].set(ylim=[-2, 2], ylabel='curr. (au)')
     ax[1, 0].set(ylim=[-2, 2], ylabel='curr. (au)')
@@ -133,10 +139,10 @@ def fig1_activation(I_activate=1, dur=1000, ts=400, te=600, dt=1):
         model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
                              flag_w_hetero=False, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
-        ax1[0, i].plot(t, rE, c='C3', alpha=0.5)
-        ax1[1, i].plot(t, rP, c='darkblue', alpha=0.5)
-        ax1[2, i].plot(t, rS, c='C0', alpha=0.5)
-        ax1[3, i].plot(t, rN, c='C1', alpha=0.5)
+        ax1[0, i].plot(t, rE, c=cPC, alpha=0.5)
+        ax1[1, i].plot(t, rP, c=cPV, alpha=0.5)
+        ax1[2, i].plot(t, rS, c=cSOM, alpha=0.5)
+        ax1[3, i].plot(t, rN, c=cNDNF, alpha=0.5)
         for j in range(4):
             ax1[j, i].axis('off')
 
@@ -151,10 +157,10 @@ def fig1_activation(I_activate=1, dur=1000, ts=400, te=600, dt=1):
                              flag_w_hetero=False, flag_pre_inh=False, flag_with_VIP=True, flag_with_NDNF=False)
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
 
-        ax2[0, i].plot(t, rE, c='C3', alpha=0.5)
-        ax2[1, i].plot(t, rP, c='darkblue', alpha=0.5)
-        ax2[2, i].plot(t, rS, c='C0', alpha=0.5)
-        ax2[3, i].plot(t, rV, c='C4', alpha=0.5)
+        ax2[0, i].plot(t, rE, c=cPC, alpha=0.5)
+        ax2[1, i].plot(t, rP, c=cPV, alpha=0.5)
+        ax2[2, i].plot(t, rS, c=cSOM, alpha=0.5)
+        ax2[3, i].plot(t, rV, c=cVIP, alpha=0.5)
         for j in range(4):
             ax2[j, i].axis('off')
 
@@ -169,19 +175,19 @@ def fig1_activation(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
                          flag_w_hetero=False, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
     t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
-    ax3[0, 0].plot(t, rE, c='C3', alpha=0.5)
-    ax3[1, 0].plot(t, rP, c='darkblue', alpha=0.5)
-    ax3[2, 0].plot(t, rS, c='C0', alpha=0.5)
-    ax3[3, 0].plot(t, rN, c='C1', alpha=0.5)
+    ax3[0, 0].plot(t, rE, c=cPC, alpha=0.5)
+    ax3[1, 0].plot(t, rP, c=cPV, alpha=0.5)
+    ax3[2, 0].plot(t, rS, c=cSOM, alpha=0.5)
+    ax3[3, 0].plot(t, rN, c=cNDNF, alpha=0.5)
 
     # b: same but NDNF inactive
     model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
                          flag_w_hetero=False, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
     t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, rN0=0)
-    ax3[0, 1].plot(t, rE, c='C3', alpha=0.5)
-    ax3[1, 1].plot(t, rP, c='darkblue', alpha=0.5)
-    ax3[2, 1].plot(t, rS, c='C0', alpha=0.5)
-    ax3[3, 1].plot(t, rN, c='C1', alpha=0.5)
+    ax3[0, 1].plot(t, rE, c=cPC, alpha=0.5)
+    ax3[1, 1].plot(t, rP, c=cPV, alpha=0.5)
+    ax3[2, 1].plot(t, rS, c=cSOM, alpha=0.5)
+    ax3[3, 1].plot(t, rN, c=cNDNF, alpha=0.5)
 
     for j in range(4):
         ax3[j, 0].axis('off')
@@ -203,7 +209,7 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     nt = int(dur / dt)
 
     # create figure
-    fig, ax = plt.subplots(1, 2, figsize=(3, 1.5), dpi=400, sharex=False, sharey='row',
+    fig, ax = plt.subplots(1, 2, figsize=(2.8, 1.5), dpi=400, sharex=False, sharey='row',
                            gridspec_kw={'right': 0.95, 'left':0.16, 'bottom':0.25})
 
     # use paramterisation from disinhibition-dominated regime (overwrite w_mean)
@@ -226,8 +232,8 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
         change_rE_wPN.append(np.mean(rE[ts:te])/np.mean(rE[:te-ts]))
         change_rP_wPN.append(np.mean(rP[ts:te])/np.mean(rP[:te-ts]))
-    ax[0].plot(wPN_range, change_rE_wPN, 'C3')
-    ax[0].plot(wPN_range, change_rP_wPN, 'darkblue')
+    ax[0].plot(wPN_range, change_rE_wPN, cPC)
+    ax[0].plot(wPN_range, change_rP_wPN, cPV)
 
     # vary wDN
     w_mean = w_mean_df.copy()
@@ -241,8 +247,8 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
         change_rE_wDN.append(np.mean(rE[ts:te])/np.mean(rE[:te-ts]))
         change_rP_wDN.append(np.mean(rP[ts:te])/np.mean(rP[:te-ts]))
-    ax[1].plot(wDN_range, change_rE_wDN, 'C3')
-    ax[1].plot(wDN_range, change_rP_wDN, 'darkblue')
+    ax[1].plot(wDN_range, change_rE_wDN, cPC)
+    ax[1].plot(wDN_range, change_rP_wDN, cPV)
 
     # pretty up the plot
     ax[0].hlines(1, 0, 2, ls='--', color='silver', lw=1, zorder=-1)
@@ -251,8 +257,48 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     ax[1].set(xlabel='NDNF->dendrite')
 
 
-def ex_bouton_imaging():  # ToDo
-    pass
+def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
+    # ToDo: document!
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
+
+    # instantiate model
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=True,
+                         flag_pre_inh=True)
+
+    # simulation paramters
+    dt = 1
+    nt = int(dur/dt)
+
+    # generate inputs
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+    xFF['N'][ts:te] = stim_NDNF
+
+    # run model
+    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=0.2, dt=dt, monitor_boutons=True,
+                                                    monitor_currents=True, calc_bg_input=True)
+
+    # plotting
+    fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=150, sharex=True)
+    ax[0].plot(t, rE, c='C3', alpha=0.5)
+    ax[1].plot(t, rD, c='k', alpha=0.5)
+    ax[2].plot(t, rS, c='C0', alpha=0.5)
+    ax[3].plot(t, rN, c='C1', alpha=0.5)
+    ax[4].plot(t, rP, c='darkblue', alpha=0.5)
+    ax[5].plot(t, p, c='C2', alpha=1)
+
+    # label stuff
+    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
+        ax[i].set(ylabel=label, ylim=[0, 3])
+    ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
+
+    fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=300, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
+    boutons = np.array(other['boutons_SOM'])
+    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0, vmax=0.15)
+    plt.colorbar(cm, ticks=[0, 0.1])
+    ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, 400], xticks=[0, 1000])
 
 
 def get_null_ff_input_arrays(nt, N_cells):
@@ -275,7 +321,8 @@ if __name__ in "__main__":
     # run different experiments; comment in or out to run only some of them
 
     # ex_activation_inactivation()
-    fig1_paired_recordings_invitro()
+    # fig1_paired_recordings_invitro()
     # fig1_activation()
     # fig1_weights_role()
+    ex_bouton_imaging()
     plt.show()
