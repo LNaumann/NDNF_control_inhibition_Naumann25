@@ -11,9 +11,16 @@ plt.style.use('pretty')
 class NetworkModel:
     """
     Class for network model with two-compartment PCs, SOMs, NDNFs and optionally PVs.
+
+    Inputs:
+    - N_cells: dictionary with the number of cells for each cell type
+    - w_mean: dictionary of mean weights for each synapse type
+    - conn_prob: dictionary of connection probabilities between all neuron types
+    - taus: dictionary of time constants
+    - bg_inputs: dictionary of background inputs
     """
 
-    def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p0=0, taup=100,
+    def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
                  flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False,
                  flag_with_NDNF=True):
 
@@ -22,7 +29,7 @@ class NetworkModel:
         self.w_mean = w_mean
 
         # flags
-        self.flag_w_heteo = flag_w_hetero
+        self.flag_w_hetero = flag_w_hetero
         self.flag_with_VIP = flag_with_VIP
         self.flag_with_NDNF = flag_with_NDNF
 
@@ -41,6 +48,7 @@ class NetworkModel:
             self.w_mean['PN'] = 0
             self.w_mean['DN'] = 0
 
+        # create weight matrices
         self.Ws = dict()  # dictionary of weight matrices
         for conn in self.w_mean.keys():
             post, pre = conn[0], conn[1]
@@ -65,7 +73,7 @@ class NetworkModel:
         # presynaptic inhibition
         self.flag_pre_inh = flag_pre_inh
         self.b = b if flag_pre_inh else 0
-        self.p0 = p0
+        self.p_low = p_low
         self.r0 = r0
         self.taup = taup
 
@@ -117,9 +125,9 @@ class NetworkModel:
         :param r: input rate
         :return: release probability p
         """
-        return np.clip(1 - self.b * (r - self.r0), self.p0, 1)
+        return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
-    def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p_init=0.5, init_noise=0.1, dt=1,
+    def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.0, dt=1,
             monitor_boutons=False, monitor_currents=False, calc_bg_input=True):
         """
         Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
@@ -133,7 +141,7 @@ class NetworkModel:
         :param rP0:         initial rate/ baseline of PVs
         :param rD0:         initial rate/ baseline of dendrites (rate = 'activity')
         :param rV0:         initial rate/ baseline of VIPs
-        :param p_init:      initial release probability
+        :param p0:          initial release probability
         :param init_noise:  noise in initial values of variables
         :param dt:          time step (in ms)
         :param monitor_boutons:     whether to monitor SOM boutons
@@ -145,6 +153,15 @@ class NetworkModel:
         # time arrays
         t = np.arange(0, dur, dt)
         nt = len(t)
+
+        if self.flag_pre_inh:
+            p0 = self.g_func(rN0)
+            # scale weights by release probability
+            self.Ws['NS'] = self.Ws['NS']/p0
+            self.Ws['DS'] = self.Ws['DS']/p0
+            self.Ws['DN'] = self.Ws['DN']/p0
+        else:
+            p0 = 1
 
         # calculate background input to establish baselines specified by initial rates
         if calc_bg_input:
@@ -161,9 +178,11 @@ class NetworkModel:
             self.Xbg['E'] = rE0 + self.w_mean['EP'] * rP0 - self.wED * rD0
             self.Xbg['D'] = rD0 + self.w_mean['DS'] * rS0 + self.w_mean['DN'] * rN0
             self.Xbg['S'] = rS0 - self.w_mean['SE'] * rE0 + self.w_mean['SV'] * rV0
-            self.Xbg['P'] = rP0 - self.w_mean['PE'] * rP0 + self.w_mean['PS'] * rS0 + self.w_mean['PN'] * rN0 \
+            self.Xbg['P'] = rP0 - self.w_mean['PE'] * rE0 + self.w_mean['PS'] * rS0 + self.w_mean['PN'] * rN0 \
                             + self.w_mean['PP'] * rP0
             print('background input:', self.Xbg)
+            # note: no need to scale weights by p0 here because the weight matrices are divided by p0 and then again
+            #       multiplied by the current p during the simulation
 
         # create empty arrays
         rE = np.zeros((nt, self.N_cells['E']))
@@ -173,7 +192,7 @@ class NetworkModel:
         rP = np.zeros((nt, self.N_cells['P']))
         rV = np.zeros((nt, self.N_cells['V']))
 
-        # set initial rates
+        # set initial rates/values
         rE[0] = np.random.normal(rE0, rE0*init_noise, size=self.N_cells['E'])
         rD[0] = np.random.normal(rD0, rD0 * init_noise, size=self.N_cells['D'])
         rS[0] = np.random.normal(rS0, rS0*init_noise, size=self.N_cells['S'])
@@ -184,7 +203,7 @@ class NetworkModel:
         # variables for other shenanigans
         aS = np.zeros(self.N_cells['S'])
         p = np.ones(nt)
-        p[0] = p_init if self.flag_pre_inh else 1
+        p[0] = p0 if self.flag_pre_inh else 1
 
         # optional recording of stuff
         other = dict()
@@ -199,17 +218,24 @@ class NetworkModel:
 
         # time integration
         for ti in range(nt-1):
-            # ToDo: add presynaptic inhibition
+
+            # white noise
+            xiE = np.random.normal(0, noise, size=self.N_cells['E'])
+            xiD = np.random.normal(0, noise, size=self.N_cells['D'])
+            xiS = np.random.normal(0, noise, size=self.N_cells['S'])
+            xiN = np.random.normal(0, noise, size=self.N_cells['N'])
+            xiP = np.random.normal(0, noise, size=self.N_cells['P'])
+            xiV = np.random.normal(0, noise, size=self.N_cells['V'])
 
             # compute input currents
-            curr_rE = self.wED * rD[ti] - self.Ws['EP'] @ rP[ti] + self.Xbg['E'] + xFF['E'][ti]
+            curr_rE = self.wED * rD[ti] - self.Ws['EP'] @ rP[ti] + self.Xbg['E'] + xFF['E'][ti] + xiE
             curr_rD = self.Ws['DE'] @ rE[ti] - p[ti]*self.Ws['DS'] @ rS[ti] - p[ti]*self.Ws['DN'] @ rN[ti]\
-                      + self.Xbg['D'] + xFF['D'][ti]
-            curr_rS = self.Ws['SE'] @ rE[ti] - self.Ws['SV']@rV[ti] + self.Xbg['S'] + xFF['S'][ti]
-            curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti]
+                      + self.Xbg['D'] + xFF['D'][ti] + xiD
+            curr_rS = self.Ws['SE'] @ rE[ti] - self.Ws['SV']@rV[ti] + self.Xbg['S'] + xFF['S'][ti] + xiS
+            curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti] + xiN
             curr_rP = self.Ws['PE'] @ rE[ti] - self.Ws['PS'] @ rS[ti] - self.Ws['PN'] @ rN[ti] - self.Ws['PP'] @ rP[ti] \
-                      + self.Xbg['P'] + xFF['P'][ti]
-            curr_rV = -self.Ws['VS']@rS[ti] + self.Xbg['V'] + xFF['V'][ti]
+                      + self.Xbg['P'] + xFF['P'][ti] + xiP
+            curr_rV = -self.Ws['VS']@rS[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
 
             # Euler integration (pre rectification)  # ToDo: -rE or -vE+
             vE = vE + (-rE[ti] + curr_rE) / self.taus['E'] * dt
@@ -217,7 +243,7 @@ class NetworkModel:
             vS = vS + (-rS[ti] + curr_rS - aS) / self.taus['S'] * dt
             vN = vN + (-rN[ti] + curr_rN) / self.taus['N'] * dt
             vP = vP + (-rP[ti] + curr_rP) / self.taus['P'] * dt
-            vV = vV +(-rV[ti] + curr_rV) / self.taus['V'] * dt
+            vV = vV + (-rV[ti] + curr_rV) / self.taus['V'] * dt
 
             # adaptation and other shenanigans
             if self.flag_SOM_ad:
@@ -272,15 +298,10 @@ if __name__ in "__main__":
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
 
     # w_mean['NS'] = 0  # block SOM->NDNF inhibition
-
     # N_cells = dict(E=1, D=1, S=1, N=1, P=1)
 
-    # ToDo: add more properties
-    # pre_inh_params = dict(taup=100, b=0.3, p0=0.1, r0=0)
-    # PC_param = dict(ED=0.7)
-
     # instantiate model
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=True, flag_w_hetero=True,
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=True,
                          flag_pre_inh=True)
     model.plot_weight_mats()
 
@@ -297,13 +318,6 @@ if __name__ in "__main__":
                     N=np.zeros((nt, model.N_cells['N'])),
                     P=np.zeros((nt, model.N_cells['P'])),
                     V=np.zeros((nt, model.N_cells['P'])))
-    xFF = xFF_null.copy()
-
-    # # B1: stimulate SOM
-    # ts, te = 300, 500
-    # stim_SOM = 1
-    # xFF = xFF_null.copy()
-    # xFF['S'][ts:te] = stim_SOM
 
     # B2: stimulate NDNF
     ts, te = 300, 400
@@ -323,8 +337,8 @@ if __name__ in "__main__":
     # xFF['N'] = sensory_stim**0.3
 
     # run model
-    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0, dt=dt, monitor_boutons=True,
-                                                monitor_currents=True)
+    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=0.2, dt=dt, monitor_boutons=True,
+                                                    monitor_currents=True, calc_bg_input=True)
 
     # plotting
     fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=150, sharex=True)
@@ -339,13 +353,14 @@ if __name__ in "__main__":
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
 
-    fig2, ax2 = plt.subplots(1, 1, figsize=(2, 2), dpi=150)
+    fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=400, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
     boutons = np.array(other['boutons_SOM'])
-    boutons_nonzero = boutons[:, np.mean(boutons, axis=0)>0]
-    ax2.pcolormesh(boutons_nonzero.T)
-    ax2.set(xlabel='time (ms)', ylabel='SOM boutons')
+    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0, vmax=0.15)
+    plt.colorbar(cm, ticks=[0, 0.1])
+    ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, 400], xticks=[0, 1000])
 
-    plt.tight_layout()
+    # plt.tight_layout()
 
     plt.show()
 
