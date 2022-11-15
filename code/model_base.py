@@ -21,7 +21,7 @@ class NetworkModel:
     """
 
     def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
-                 flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False,
+                 flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False, flag_p_on_DN=False,
                  flag_with_NDNF=True):
 
         # network parameters
@@ -76,6 +76,7 @@ class NetworkModel:
         self.p_low = p_low
         self.r0 = r0
         self.taup = taup
+        self.flag_p_on_DN = flag_p_on_DN
 
     def make_weight_mat(self, Npre, Npost, c_prob, w_mean, w_std_rel=0, no_autapse=False):
         """
@@ -128,7 +129,7 @@ class NetworkModel:
         return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
     def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.0, dt=1,
-            monitor_boutons=False, monitor_currents=False, calc_bg_input=True):
+            monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True):
         """
         Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
         'other' things, such as currents or 'bouton activities'.
@@ -159,7 +160,8 @@ class NetworkModel:
             # scale weights by release probability
             self.Ws['NS'] = self.Ws['NS']/p0
             self.Ws['DS'] = self.Ws['DS']/p0
-            self.Ws['DN'] = self.Ws['DN']/p0
+            if self.flag_p_on_DN:
+                self.Ws['DN'] = self.Ws['DN']/p0
         else:
             p0 = 1
 
@@ -209,6 +211,9 @@ class NetworkModel:
         other = dict()
         if monitor_boutons:
             other['boutons_SOM'] = []
+        if monitor_dend_inh:
+            other['dend_inh_SOM'] = []
+            other['dend_inh_NDNF'] = []
         if monitor_currents:
             other['curr_rS'] = []
             other['curr_rN'] = []
@@ -227,9 +232,12 @@ class NetworkModel:
             xiP = np.random.normal(0, noise, size=self.N_cells['P'])
             xiV = np.random.normal(0, noise, size=self.N_cells['V'])
 
+            # release factor for NDNF->dendrite depends on flag
+            pDN = p[ti] if self.flag_p_on_DN else 1
+
             # compute input currents
             curr_rE = self.wED * rD[ti] - self.Ws['EP'] @ rP[ti] + self.Xbg['E'] + xFF['E'][ti] + xiE
-            curr_rD = self.Ws['DE'] @ rE[ti] - p[ti]*self.Ws['DS'] @ rS[ti] - p[ti]*self.Ws['DN'] @ rN[ti]\
+            curr_rD = self.Ws['DE'] @ rE[ti] - p[ti]*self.Ws['DS'] @ rS[ti] - pDN*self.Ws['DN'] @ rN[ti]\
                       + self.Xbg['D'] + xFF['D'][ti] + xiD
             curr_rS = self.Ws['SE'] @ rE[ti] - self.Ws['SV']@rV[ti] + self.Xbg['S'] + xFF['S'][ti] + xiS
             curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti] + xiN
@@ -260,7 +268,11 @@ class NetworkModel:
             rV[ti + 1] = np.maximum(vV, 0)
 
             if monitor_boutons:
-                other['boutons_SOM'].append((p[ti]*self.Ws['DS']*rS[ti]).flatten())
+                other['boutons_SOM'].append((p[ti]*self.Ws['DS']@rS[ti]).flatten())
+
+            if monitor_dend_inh:
+                other['dend_inh_SOM'].append(p[ti]*self.Ws['DS']@rS[ti])
+                other['dend_inh_NDNF'].append(pDN*self.Ws['DN']@rN[ti])
 
             if monitor_currents:
                 other['curr_rS'].append(curr_rS)
