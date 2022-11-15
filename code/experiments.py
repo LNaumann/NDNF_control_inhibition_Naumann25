@@ -15,6 +15,7 @@ cPV = '#345377'
 cSOM = '#5282BA'
 cNDNF = '#E18E69'
 cVIP = '#D1BECF'
+cpi = '#A7C274'
 
 def ex_activation_inactivation():
     """
@@ -293,13 +294,108 @@ def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
 
-    fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=300, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
+    fig2, ax2 = plt.subplots(1, 1, figsize=(3, 2), dpi=300, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
     boutons = np.array(other['boutons_SOM'])
     boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
     cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0, vmax=0.15)
     plt.colorbar(cm, ticks=[0, 0.1])
     ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, 400], xticks=[0, 1000])
 
+    boutons_NDNFact = np.mean(boutons_nonzero[ts:te], axis=0)
+    boutons_cntrl = np.mean(boutons_nonzero[0:ts], axis=0)
+
+    fig3, ax3 = plt.subplots(1, 1, figsize=(2, 1.5), dpi=300, gridspec_kw={'left': 0.25, 'right':0.9, 'bottom':0.15})
+    plot_violin(ax3, 0, boutons_cntrl, color=cSOM)
+    plot_violin(ax3, 1, boutons_NDNFact, color='#E9B86F')
+
+    # vl2 = ax3.violinplot(boutons_NDNFact, positions=[1])
+    # for pc in vl1['bodies']:
+    #     pc.set_facecolor(cSOM)
+    #     pc.set_edgecolor(cSOM)
+    # for pc in vl2['bodies']:
+    #     pc.set_facecolor('#E9B86F')
+    #     pc.set_edgecolor('#E9B86F')
+    ax3.set(xlim=[-0.5, 1.5], xticks=[0, 1], xticklabels=['ctrl', 'NDNF act.'], ylim=[0, 0.12], yticks=[0, 0.1],
+            ylabel='SOM bouton act.')
+
+
+def ex_layer_specific_inhibition(save=False, dur=1000, dt=1):
+    # todo: document
+
+    nt = int(dur / dt)
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
+
+    ndnf_input = np.arange(-1, 1, 0.05)
+
+    # empty arrays for recording stuff
+    rS_inh_record = []
+    rN_inh_record = []
+    rS_record = []
+    rN_record = []
+
+    for i, I_activate in enumerate(ndnf_input):
+
+        # create input (stimulation of NDNF)
+        xFF = get_null_ff_input_arrays(nt, N_cells)
+        xFF['N'][:, :] = I_activate
+        model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
+                            flag_w_hetero=False, flag_pre_inh=True, flag_with_VIP=False, flag_with_NDNF=True,
+                            flag_p_on_DN=False)
+        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True)
+        rS_record.append(np.mean(rS[-1]))
+        rN_record.append(np.mean(rN[-1]))
+        # rN_record.append(np.mean(rN[-1]))
+        rS_inh_record.append(np.mean(np.array(other['dend_inh_SOM'][-1])))
+        rN_inh_record.append(np.mean(np.array(other['dend_inh_NDNF'][-1])))
+        # boutons = np.array(other['boutons_SOM'])
+        # boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+        # bouton_record.append(np.mean(boutons_nonzero))
+
+    fig, ax = plt.subplots(2, 1, figsize=(2, 3), dpi=400, gridspec_kw={'left': 0.25, 'bottom': 0.2, 'top': 0.95,
+                                                                       'height_ratios': [1, 1]},
+                           sharex=True)
+    ax[0].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--')
+    ax[0].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--')
+    ax[1].plot(ndnf_input, rS_record, c=cSOM)
+    ax[1].plot(ndnf_input, rN_record, c=cNDNF)
+
+    ax[0].set(ylabel='dendr. inhibition (au)', ylim=[-0.05, 1], yticks=[0, 1])
+    # ax[1].set(ylabel='NDNF act.', ylim=[0, 3])
+    ax[1].set(xlabel='input to NDNF (au)', ylabel='neural activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5], yticks=[0, 1, 2])
+    #           xticks=[0, 1])
+
+    if save:
+        plt.savefig('../results/figs/tmp/'+save, dpi=400)
+
+def plot_gfunc(b=0.5):
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, flag_pre_inh=True)
+    ndnf_act = np.arange(0, 2.5, 0.1)
+    p = model.g_func(ndnf_act)
+
+    fig, ax = plt.subplots(1, 1, figsize=(2.2, 1.5), dpi=400, gridspec_kw={'left': 0.2, 'bottom':0.25})
+    ax.plot(ndnf_act, p, c=cpi)
+    ax.set(xlabel='NDNF activity (au)', ylabel='release factor', xlim=[0, 2.5], ylim=[-0.05, 1], xticks=[0, 1, 2],
+           yticks=[0, 1])
+
+def plot_violin(ax, pos, data, color=None, showmeans=True):
+    """
+    Makes violin of data at x position pos in axis object ax.
+    - data is an array of values
+    - pos is a scalar
+    - ax is an axis object
+
+    Kwargs: color (if None default mpl is used) and whether to plot the mean
+    """
+
+    parts = ax.violinplot(data, positions=[pos], showmeans=showmeans, widths=0.6)
+    if color:
+        for pc in parts['bodies']:
+            pc.set_color(color)
+        for partname in ('cbars', 'cmins', 'cmaxes', 'cmeans'):
+            vp = parts[partname]
+            vp.set_edgecolor(color)
+            vp.set_linewidth(1)
 
 def get_null_ff_input_arrays(nt, N_cells):
     """
@@ -324,5 +420,7 @@ if __name__ in "__main__":
     # fig1_paired_recordings_invitro()
     # fig1_activation()
     # fig1_weights_role()
-    ex_bouton_imaging()
+    # ex_bouton_imaging()
+    ex_layer_specific_inhibition(save='fig2c.pdf')
+    # plot_gfunc()
     plt.show()
