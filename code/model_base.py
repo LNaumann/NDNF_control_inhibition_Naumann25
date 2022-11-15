@@ -24,6 +24,8 @@ class NetworkModel:
                  flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False, flag_p_on_DN=False,
                  flag_with_NDNF=True):
 
+        # todo: move wED parameter somewhere else
+
         # network parameters
         self.N_cells = N_cells
         self.w_mean = w_mean
@@ -212,8 +214,8 @@ class NetworkModel:
         if monitor_boutons:
             other['boutons_SOM'] = []
         if monitor_dend_inh:
-            other['dend_inh_SOM'] = []
-            other['dend_inh_NDNF'] = []
+            other['dend_inh_SOM'] = [p[0]*self.Ws['DS']@rS[0]]
+            other['dend_inh_NDNF'] = [self.Ws['DN']@rN[0]]  # todo: include flag for pi on wDN
         if monitor_currents:
             other['curr_rS'] = []
             other['curr_rN'] = []
