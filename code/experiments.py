@@ -17,6 +17,7 @@ cNDNF = '#E18E69'
 cVIP = '#D1BECF'
 cpi = '#A7C274'
 
+
 def ex_activation_inactivation():
     """
     Experiment: activate and inactive different cell types and check effect on all other cells. Plots big fig array of
@@ -195,7 +196,7 @@ def fig1_activation(I_activate=1, dur=1000, ts=400, te=600, dt=1):
         ax3[j, 1].axis('off')
 
 
-def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
+def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1, save=False, noise=0.0):
     """
     Hacky function to plot effect of different weights on the responses to simulated optogenetic experiments.
     Plots figure panel draft for fig 1.
@@ -210,12 +211,14 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     nt = int(dur / dt)
 
     # create figure
+    dpi = 400 if save else 200
     fig, ax = plt.subplots(1, 2, figsize=(2.8, 1.5), dpi=400, sharex=False, sharey='row',
                            gridspec_kw={'right': 0.95, 'left':0.16, 'bottom':0.25})
 
     # use paramterisation from disinhibition-dominated regime (overwrite w_mean)
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
-    w_mean_df = dict(NS=1, DS=0.5, DN=1.5, SE=0.5, NN=0, PS=0.5, PN=0.5, PP=0, PE=0.7, EP=1, DE=0, VS=0, SV=0)
+    w_mean_df = dict(NS=0.9, DS=0.5, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
+    # w_mean_df = dict(NS=1, DS=0.5, DN=1.5, SE=0.5, NN=0, PS=0.5, PN=0.5, PP=0, PE=0.7, EP=1, DE=0, VS=0, SV=0)
     w_mean = w_mean_df.copy()
 
     # create input (stimulation of SOMs)
@@ -229,8 +232,8 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     for wPN in wPN_range:
         w_mean['PN'] = wPN
         model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
-                            flag_w_hetero=False, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
-        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0)
+                             flag_w_hetero=True, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
+        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, noise=noise)
         change_rE_wPN.append(np.mean(rE[ts:te])/np.mean(rE[:te-ts]))
         change_rP_wPN.append(np.mean(rP[ts:te])/np.mean(rP[:te-ts]))
     ax[0].plot(wPN_range, change_rE_wPN, cPC)
@@ -256,6 +259,50 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1):
     ax[1].hlines(1, 0, 2, ls='--', color='silver', lw=1, zorder=-1)
     ax[0].set(xlabel='NDNF->PV', ylabel='rate change (rel)', ylim=[0.5, 1.6], yticks=[0.5, 1, 1.5])
     ax[1].set(xlabel='NDNF->dendrite')
+
+    if save:
+        plt.savefig('../results/figs/tmp/'+save, dpi=400)
+
+
+def ex_perturb_circuit(save=False, I_activate=1, dur=1000, ts=400, te=600, dt=1, noise=0.0):
+    """
+    Experiment: stimulate SOM for the default parameters and the disinhibition-dominated regime
+    """
+
+    # number of timesteps
+    nt = int(dur/dt)
+
+    # get default parameters and weights for disinhibition-dominated regime
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
+    w_mean['DS'] = 1.2
+    w_mean_disinh = dict(NS=0.9, DS=0.5, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
+
+    # create stimulus array
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+    xFF['S'][ts:te, :] = I_activate
+
+    # set up models
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True, flag_pre_inh=False)
+    model_disinh = NetworkModel(N_cells, w_mean_disinh, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True,
+                                flag_pre_inh=False)
+
+    # run and plot for default and disinhibition-dominated model
+    dpi = 400 if save else 200
+    fig, ax = plt.subplots(4, 2, dpi=dpi, figsize=(1.7, 1.7), sharex=True, gridspec_kw={'top':0.95, 'bottom': 0.05})
+    for i, mod in enumerate([model, model_disinh]):
+        t, rE, rD, rS, rN, rP, rV, p, other = mod.run(dur, xFF, dt=dt, init_noise=0, noise=noise)
+
+        ax[0, i].plot(t, rN, c=cNDNF, alpha=0.5, lw=0.8)
+        ax[1, i].plot(t, rS, c=cSOM, alpha=0.5, lw=0.8)
+        ax[2, i].plot(t, rP, c=cPV, alpha=0.5, lw=0.8)
+        ax[3, i].plot(t, rE, c=cPC, alpha=0.5, lw=0.8)
+
+        for axx in ax[:, i]:
+            axx.set(ylim=[-0.1, 2.3])
+            axx.axis('off')
+
+    if save:
+        plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
 
 def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
@@ -319,12 +366,13 @@ def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
             ylabel='SOM bouton act.')
 
 
-def ex_layer_specific_inhibition(save=False, dur=1000, dt=1):
+def ex_layer_specific_inhibition(save=False, dur=1000, dt=1, noise=0.0):
     # todo: document
 
     nt = int(dur / dt)
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
 
+    # array for varying NDNF input
     ndnf_input = np.arange(-1, 1, 0.05)
 
     # empty arrays for recording stuff
@@ -339,44 +387,97 @@ def ex_layer_specific_inhibition(save=False, dur=1000, dt=1):
         xFF = get_null_ff_input_arrays(nt, N_cells)
         xFF['N'][:, :] = I_activate
         model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
-                            flag_w_hetero=False, flag_pre_inh=True, flag_with_VIP=False, flag_with_NDNF=True,
+                            flag_w_hetero=True, flag_pre_inh=True, flag_with_VIP=False, flag_with_NDNF=True,
                             flag_p_on_DN=False)
-        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True)
-        rS_record.append(np.mean(rS[-1]))
-        rN_record.append(np.mean(rN[-1]))
-        # rN_record.append(np.mean(rN[-1]))
+        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                        noise=noise)
+
+        # save stuff
+        rS_record.append(rS[-1])
+        rN_record.append(rN[-1])
         rS_inh_record.append(np.mean(np.array(other['dend_inh_SOM'][-1])))
         rN_inh_record.append(np.mean(np.array(other['dend_inh_NDNF'][-1])))
-        # boutons = np.array(other['boutons_SOM'])
-        # boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
-        # bouton_record.append(np.mean(boutons_nonzero))
 
-    fig, ax = plt.subplots(2, 1, figsize=(2, 3), dpi=400, gridspec_kw={'left': 0.25, 'bottom': 0.2, 'top': 0.95,
-                                                                       'height_ratios': [1, 1]},
-                           sharex=True)
+    # plotting
+    dpi = 400 if save else 200
+    fig, ax = plt.subplots(2, 1, figsize=(2, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
+                                                                       'height_ratios': [1, 1]}, sharex=True)
     ax[0].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--')
     ax[0].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--')
-    ax[1].plot(ndnf_input, rS_record, c=cSOM)
-    ax[1].plot(ndnf_input, rN_record, c=cNDNF)
+    ax[1].plot(ndnf_input, np.mean(np.array(rS_record), axis=1), c=cSOM)
+    ax[1].plot(ndnf_input, np.mean(np.array(rN_record), axis=1), c=cNDNF)
 
-    ax[0].set(ylabel='dendr. inhibition (au)', ylim=[-0.05, 1], yticks=[0, 1])
-    # ax[1].set(ylabel='NDNF act.', ylim=[0, 3])
-    ax[1].set(xlabel='input to NDNF (au)', ylabel='neural activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5], yticks=[0, 1, 2])
-    #           xticks=[0, 1])
+    # labels etc
+    ax[0].set(ylabel='dend. inhibition (au)', ylim=[-0.05, 1], yticks=[0, 1])
+    ax[1].set(xlabel='input to NDNF (au)', ylabel='neural activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5],
+              yticks=[0, 1, 2])
 
+    # saving
     if save:
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
-def plot_gfunc(b=0.5):
+
+def ex_switch_activity(save=False, noise=0.0):
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params(flag_mean_pop=False)
+
+    # increase SOM to NDNF inhibition to get bistable regime
+    w_mean['NS'] = 1.4
+
+    # instantiate model
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True,
+                         flag_pre_inh=True)
+
+    # simulation paramters
+    dur = 3000
+    dt = 1
+    nt = int(dur/dt)
+
+    # generate inputs
+    t_act_s, t_act_e = 500, 1000
+    t_inact_s, t_inact_e = 2000, 2500
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+    xFF['N'][t_act_s:t_act_e] = 1.5
+    xFF['N'][t_inact_s:t_inact_e] = -1.5
+
+    # run model
+    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
+                                                    monitor_dend_inh=True, noise=noise)
+
+    # plotting
+    dpi = 400 if save else 200
+    fig, ax = plt.subplots(3, 1, figsize=(2, 2.8), dpi=dpi, sharex=True,
+                           gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95, 'height_ratios': [1, 1, 0.5]})
+    ax[1].plot(t/1000, rN, c=cNDNF, alpha=0.5)
+    ax[1].plot(t/1000, rS, c=cSOM, alpha=0.5)
+    ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_NDNF']), axis=1), c=cNDNF, ls='--')
+    ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_SOM']), axis=1), c=cSOM, ls='--')
+    ax[2].plot(t/1000, p, c=cpi, alpha=1)
+
+    # labels etc
+    ax[0].set(ylabel='dend. inh. (au)', ylim=[-0.1, 1.5], yticks=[0, 1])
+    ax[1].set(ylabel='activity (au)', ylim=[-0.1, 3.5], yticks=[0, 2])
+    ax[2].set(ylabel='release', ylim=[-0.05, 1.05], yticks=[0, 1], xlabel='time (s)', xticks=[0, 1, 2, 3])
+
+    # saving (optional)
+    if save:
+        plt.savefig('../results/figs/tmp/'+save, dpi=400)
+
+
+def plot_gfunc(save=False, b=0.5):
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
     model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, flag_pre_inh=True)
     ndnf_act = np.arange(0, 2.5, 0.1)
     p = model.g_func(ndnf_act)
 
-    fig, ax = plt.subplots(1, 1, figsize=(2.2, 1.5), dpi=400, gridspec_kw={'left': 0.2, 'bottom':0.25})
+    fig, ax = plt.subplots(1, 1, figsize=(2, 1.5), dpi=400, gridspec_kw={'left': 0.25, 'bottom':0.25})
     ax.plot(ndnf_act, p, c=cpi)
     ax.set(xlabel='NDNF activity (au)', ylabel='release factor', xlim=[0, 2.5], ylim=[-0.05, 1], xticks=[0, 1, 2],
            yticks=[0, 1])
+    if save:
+        plt.savefig('../results/figs/tmp/'+save, dpi=400)
+
 
 def plot_violin(ax, pos, data, color=None, showmeans=True):
     """
@@ -396,6 +497,7 @@ def plot_violin(ax, pos, data, color=None, showmeans=True):
             vp = parts[partname]
             vp.set_edgecolor(color)
             vp.set_linewidth(1)
+
 
 def get_null_ff_input_arrays(nt, N_cells):
     """
@@ -421,6 +523,12 @@ if __name__ in "__main__":
     # fig1_activation()
     # fig1_weights_role()
     # ex_bouton_imaging()
-    ex_layer_specific_inhibition(save='fig2c.pdf')
-    # plot_gfunc()
+
+    # generating figures for cosyne abstract submission
+    noise = 0.15
+    ex_layer_specific_inhibition(save='fig2c.pdf', noise=noise)
+    ex_switch_activity(save='fig2d.pdf', noise=noise)
+    # plot_gfunc(save='fig2b.pdf')
+    ex_perturb_circuit(save='fig1b.pdf', noise=noise)
+    fig1_weights_role(save='fig1c.pdf', noise=noise)
     plt.show()
