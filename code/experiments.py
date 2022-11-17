@@ -305,18 +305,26 @@ def ex_perturb_circuit(save=False, I_activate=1, dur=1000, ts=400, te=600, dt=1,
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
 
-def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
-    # ToDo: document!
+def ex_bouton_imaging(dur=1000, ts=300, te=400, dt=1, stim_NDNF=2, noise=0.0, flag_w_hetero=False):
+    """
+    Experiment: Image SOM bouton in response to stimulation of NDNF interneurons.
+    - dur: duration of experiment (ms)
+    - ts: start of NDNF stimulation
+    - te: end of NDNF stimulation
+    - dt: integration time step (ms)
+    - stim_NDNF: strength of NDNF stimulation
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    """
 
     # define parameter dictionaries
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
 
     # instantiate model
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=True,
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=flag_w_hetero,
                          flag_pre_inh=True)
 
     # simulation paramters
-    dt = 1
     nt = int(dur/dt)
 
     # generate inputs
@@ -324,10 +332,12 @@ def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
     xFF['N'][ts:te] = stim_NDNF
 
     # run model
-    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=0.2, dt=dt, monitor_boutons=True,
+    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
                                                     monitor_currents=True, calc_bg_input=True)
 
     # plotting
+    # --------
+    # 3 different plots here: an overview plot, bouton imaging + quantification and only bouton imaging
     fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=150, sharex=True)
     ax[0].plot(t, rE, c='C3', alpha=0.5)
     ax[1].plot(t, rD, c='k', alpha=0.5)
@@ -366,10 +376,20 @@ def ex_bouton_imaging(dur=1000, ts=300, te=400, stim_NDNF=2):
             ylabel='SOM bouton act.')
 
 
-def ex_layer_specific_inhibition(save=False, dur=1000, dt=1, noise=0.0):
-    # todo: document
+def ex_layer_specific_inhibition(dur=1000, dt=1, noise=0.0, flag_w_hetero=True, save=False):
+    """
+    Experiment: Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
+    - dur: duration of experiment (ms)
+    - dt: integration time step (ms)
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
 
+    # extract number of timesteps
     nt = int(dur / dt)
+
+    # get default parameters
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
 
     # array for varying NDNF input
@@ -386,9 +406,10 @@ def ex_layer_specific_inhibition(save=False, dur=1000, dt=1, noise=0.0):
         # create input (stimulation of NDNF)
         xFF = get_null_ff_input_arrays(nt, N_cells)
         xFF['N'][:, :] = I_activate
-        model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
-                            flag_w_hetero=True, flag_pre_inh=True, flag_with_VIP=False, flag_with_NDNF=True,
-                            flag_p_on_DN=False)
+
+        # instantiate and run model
+        model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=flag_w_hetero,
+                             flag_pre_inh=True)
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
                                                         noise=noise)
 
@@ -417,7 +438,14 @@ def ex_layer_specific_inhibition(save=False, dur=1000, dt=1, noise=0.0):
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
 
-def ex_switch_activity(save=False, noise=0.0):
+def ex_switch_activity(noise=0.0, flag_w_hetero=True, save=False):
+    """
+    Experiment: Switch between NDNDF and SOM-dominated dendritic inhibition. Network is in bistable mututal inhibition
+                regime. Activate and inactive NDNF interneurons to create switching.
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
 
     # define parameter dictionaries
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params(flag_mean_pop=False)
@@ -426,7 +454,7 @@ def ex_switch_activity(save=False, noise=0.0):
     w_mean['NS'] = 1.4
 
     # instantiate model
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True,
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=flag_w_hetero,
                          flag_pre_inh=True)
 
     # simulation paramters
@@ -465,16 +493,29 @@ def ex_switch_activity(save=False, noise=0.0):
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
 
-def plot_gfunc(save=False, b=0.5):
+def plot_gfunc(b=0.5, save=False):
+    """
+    Plot presynaptic inhibition transfer function.
+    - b: strength of presynaptic inhibition
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+
+    """
+
+    # get default parameters and instantiate model
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, flag_pre_inh=True)
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, flag_pre_inh=True, b=b)
+
+    # get release probability for range of NDNF activity
     ndnf_act = np.arange(0, 2.5, 0.1)
     p = model.g_func(ndnf_act)
 
+    # plotting
     fig, ax = plt.subplots(1, 1, figsize=(2, 1.5), dpi=400, gridspec_kw={'left': 0.25, 'bottom':0.25})
     ax.plot(ndnf_act, p, c=cpi)
     ax.set(xlabel='NDNF activity (au)', ylabel='release factor', xlim=[0, 2.5], ylim=[-0.05, 1], xticks=[0, 1, 2],
            yticks=[0, 1])
+
+    # saving (optional)
     if save:
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
