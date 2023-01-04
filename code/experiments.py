@@ -212,12 +212,13 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1, save=False, 
 
     # create figure
     dpi = 400 if save else 200
-    fig, ax = plt.subplots(1, 2, figsize=(2.8, 1.5), dpi=400, sharex=False, sharey='row',
-                           gridspec_kw={'right': 0.95, 'left':0.16, 'bottom':0.25})
+    fig, ax = plt.subplots(1, 2, figsize=(3.4, 1.6), dpi=400, sharex=False, sharey='row',
+                           gridspec_kw={'right': 0.98, 'left':0.15, 'bottom':0.25})
 
     # use paramterisation from disinhibition-dominated regime (overwrite w_mean)
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
-    w_mean_df = dict(NS=0.9, DS=0.5, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
+    # w_mean_df = dict(NS=0.7, DS=0.5, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
+    w_mean_df = dict(NS=0.6, DS=0.3, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=1, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
     # w_mean_df = dict(NS=1, DS=0.5, DN=1.5, SE=0.5, NN=0, PS=0.5, PN=0.5, PP=0, PE=0.7, EP=1, DE=0, VS=0, SV=0)
     w_mean = w_mean_df.copy()
 
@@ -232,7 +233,7 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1, save=False, 
     for wPN in wPN_range:
         w_mean['PN'] = wPN
         model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False,
-                             flag_w_hetero=True, flag_pre_inh=False, flag_with_VIP=False, flag_with_NDNF=True)
+                             flag_w_hetero=True, flag_pre_inh=True, flag_with_VIP=False, flag_with_NDNF=True)
         t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, noise=noise)
         change_rE_wPN.append(np.mean(rE[ts:te])/np.mean(rE[:te-ts]))
         change_rP_wPN.append(np.mean(rP[ts:te])/np.mean(rP[:te-ts]))
@@ -264,7 +265,7 @@ def fig1_weights_role(I_activate=1, dur=1000, ts=400, te=600, dt=1, save=False, 
         plt.savefig('../results/figs/tmp/'+save, dpi=400)
 
 
-def ex_perturb_circuit(save=False, I_activate=1, dur=1000, ts=400, te=600, dt=1, noise=0.0):
+def ex_perturb_circuit(save=False, I_activate=1, dur=1500, ts=600, te=800, dt=1, noise=0.0):
     """
     Experiment: stimulate SOM for the default parameters and the disinhibition-dominated regime
     """
@@ -275,20 +276,21 @@ def ex_perturb_circuit(save=False, I_activate=1, dur=1000, ts=400, te=600, dt=1,
     # get default parameters and weights for disinhibition-dominated regime
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
     w_mean['DS'] = 1.2
-    w_mean_disinh = dict(NS=0.9, DS=0.5, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
+    w_mean_disinh = dict(NS=0.6, DS=0.3, DN=1.5, SE=0.5, NN=0.2, PS=0.8, PN=1, PP=0.1, PE=1, EP=0.5, DE=0, VS=0, SV=0)
 
     # create stimulus array
     xFF = get_null_ff_input_arrays(nt, N_cells)
     xFF['S'][ts:te, :] = I_activate
 
     # set up models
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True, flag_pre_inh=False)
-    model_disinh = NetworkModel(N_cells, w_mean_disinh, conn_prob, taus, bg_inputs, wED=0.7, flag_w_hetero=True,
-                                flag_pre_inh=False)
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=True, flag_pre_inh=True)
+    model_disinh = NetworkModel(N_cells, w_mean_disinh, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=True,
+                                flag_pre_inh=True)
 
     # run and plot for default and disinhibition-dominated model
     dpi = 400 if save else 200
-    fig, ax = plt.subplots(4, 2, dpi=dpi, figsize=(1.7, 1.7), sharex=True, gridspec_kw={'top':0.95, 'bottom': 0.05})
+    fig, ax = plt.subplots(4, 2, dpi=dpi, figsize=(2, 1.7), sharex=True, gridspec_kw={'top':0.95, 'bottom': 0.05,
+                                                                                      'left': 0.05})
     for i, mod in enumerate([model, model_disinh]):
         t, rE, rD, rS, rN, rP, rV, p, other = mod.run(dur, xFF, dt=dt, init_noise=0, noise=noise)
 
@@ -421,8 +423,9 @@ def ex_layer_specific_inhibition(dur=1000, dt=1, noise=0.0, flag_w_hetero=True, 
 
     # plotting
     dpi = 400 if save else 200
-    fig, ax = plt.subplots(2, 1, figsize=(2, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
-                                                                       'height_ratios': [1, 1]}, sharex=True)
+    fig, ax = plt.subplots(2, 1, figsize=(2.1, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
+                                                                           'right': 0.95,
+                                                                           'height_ratios': [1, 1]}, sharex=True)
     ax[0].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--')
     ax[0].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--')
     ax[1].plot(ndnf_input, np.mean(np.array(rS_record), axis=1), c=cSOM)
@@ -475,8 +478,9 @@ def ex_switch_activity(noise=0.0, flag_w_hetero=True, save=False):
 
     # plotting
     dpi = 400 if save else 200
-    fig, ax = plt.subplots(3, 1, figsize=(2, 2.8), dpi=dpi, sharex=True,
-                           gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95, 'height_ratios': [1, 1, 0.5]})
+    fig, ax = plt.subplots(3, 1, figsize=(2.1, 2.8), dpi=dpi, sharex=True,
+                           gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95, 'right': 0.95,
+                                        'height_ratios': [1, 1, 0.5]})
     ax[1].plot(t/1000, rN, c=cNDNF, alpha=0.5)
     ax[1].plot(t/1000, rS, c=cSOM, alpha=0.5)
     ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_NDNF']), axis=1), c=cNDNF, ls='--')
@@ -510,9 +514,9 @@ def plot_gfunc(b=0.5, save=False):
     p = model.g_func(ndnf_act)
 
     # plotting
-    fig, ax = plt.subplots(1, 1, figsize=(2, 1.5), dpi=400, gridspec_kw={'left': 0.25, 'bottom':0.25})
+    fig, ax = plt.subplots(1, 1, figsize=(1.8, 1), dpi=400, gridspec_kw={'left': 0.25, 'bottom':0.4,'right':0.95})
     ax.plot(ndnf_act, p, c=cpi)
-    ax.set(xlabel='NDNF activity (au)', ylabel='release factor', xlim=[0, 2.5], ylim=[-0.05, 1], xticks=[0, 1, 2],
+    ax.set(xlabel='NDNF activity (au)', ylabel='rel. factor', xlim=[0, 2.5], ylim=[-0.05, 1], xticks=[0, 1, 2],
            yticks=[0, 1])
 
     # saving (optional)
@@ -567,8 +571,8 @@ if __name__ in "__main__":
 
     # generating figures for cosyne abstract submission
     noise = 0.15
-    ex_layer_specific_inhibition(save='fig2c.pdf', noise=noise)
-    ex_switch_activity(save='fig2d.pdf', noise=noise)
+    # ex_layer_specific_inhibition(save='fig2c.pdf', noise=noise)
+    # ex_switch_activity(save='fig2d.pdf', noise=noise)
     # plot_gfunc(save='fig2b.pdf')
     ex_perturb_circuit(save='fig1b.pdf', noise=noise)
     fig1_weights_role(save='fig1c.pdf', noise=noise)
