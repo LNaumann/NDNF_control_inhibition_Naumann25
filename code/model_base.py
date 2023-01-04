@@ -22,7 +22,7 @@ class NetworkModel:
 
     def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
                  flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False, flag_p_on_DN=False,
-                 flag_with_NDNF=True):
+                 flag_with_NDNF=True, flag_with_PV=True):
 
         # todo: move wED parameter somewhere else
 
@@ -49,6 +49,11 @@ class NetworkModel:
             bg_inputs['N'] = 0
             self.w_mean['PN'] = 0
             self.w_mean['DN'] = 0
+
+        if not flag_with_NDNF:
+            bg_inputs['P'] = 0
+            self.w_mean['PE'] = 0
+            self.w_mean['EP'] = 0
 
         # create weight matrices
         self.Ws = dict()  # dictionary of weight matrices
