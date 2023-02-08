@@ -9,21 +9,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('pretty')
 import model_base as mb
-from experiments import get_null_ff_input_arrays, get_model_colours
+from experiments import get_null_ff_input_arrays, get_model_colours, plot_violin
 
 cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 
 DPI = 150
 
-def fig1_paired_recordings_invitro(dur=800, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
+def exp101_paired_recordings_invitro(dur=800, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
     Run experiment of paired "in vitro" recordings and plot.
     - stimulate NDNF and SOM, record from PC, SOM and NDNF
     - "in vitro" means all cells have 0 baseline activity
     - paired recordings means the ingoing currents to each cell
-    :param dur:  length of experiment
-    :param dt:   time step
+
+    Parameters
+    - dur: length of experiment
+    - dt: time step
+    - ...
     """
+    # TODO: complete list of parameters
 
     # simulation paramters
     nt = int(dur / dt)
@@ -75,5 +79,86 @@ def fig1_paired_recordings_invitro(dur=800, dt=1, w_hetero=False, mean_pop=True,
         plt.close(fig)
 
 
-fig1_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=True)
-plt.show()
+def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, w_hetero=True, mean_pop=False, pre_inh=True, noise=0.2, save=False):
+    """
+    Experiment: Image SOM bouton in response to stimulation of NDNF interneurons.
+
+    Parameters
+    - dur: duration of experiment (ms)
+    - ts: start of NDNF stimulation
+    - te: end of NDNF stimulation
+    - dt: integration time step (ms)
+    - stim_NDNF: strength of NDNF stimulation
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - mean_pop: if true, simulate only one neuron (mean) per population
+    """
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # instantiate model
+    model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                           flag_pre_inh=pre_inh)
+
+    # simulation paramters
+    nt = int(dur/dt)
+
+    # generate inputs
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+    xFF['N'][ts:te] = stim_NDNF
+
+    # run model
+    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
+                                                           monitor_currents=True)
+    # TODO: add init_noise as parameter to the function?
+
+    # plotting
+    # --------
+    # 3 different plots here: an overview plot, bouton imaging + quantification and only bouton imaging
+
+    # plot 1: response of all neurons to NDNF stimulation
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=dpi, sharex=True)
+    ax[0].plot(t, rE, c='C3', alpha=0.5)
+    ax[1].plot(t, rD, c='k', alpha=0.5)
+    ax[2].plot(t, rS, c='C0', alpha=0.5)
+    ax[3].plot(t, rN, c='C1', alpha=0.5)
+    ax[4].plot(t, rP, c='darkblue', alpha=0.5)
+    ax[5].plot(t, p, c='C2', alpha=1)
+    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
+        ax[i].set(ylabel=label, ylim=[0, 3])
+    ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
+
+    # plot 2: monitoring SOM boutons
+    fig2, ax2 = plt.subplots(1, 1, figsize=(2.5, 2), dpi=dpi, gridspec_kw={'left':0.25, 'right':0.9, 'bottom':0.2})
+    boutons = np.array(other['boutons_SOM'])
+    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0) #, vmax=0.15)
+    plt.colorbar(cm, ticks=[0, 0.5])
+    ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, (len(boutons_nonzero.T)//50)*50], xticks=[0, 1000, 2000])
+
+    # plot 3: quantification of monitoring SOM boutons
+    fig3, ax3 = plt.subplots(1, 1, figsize=(2.5, 2), dpi=dpi, gridspec_kw={'left': 0.25, 'right':0.9, 'bottom':0.2})
+    boutons_NDNFact = np.mean(boutons_nonzero[ts:te+200], axis=0)
+    boutons_cntrl = np.mean(boutons_nonzero[0:ts], axis=0)
+    plot_violin(ax3, 0, boutons_cntrl, color=cSOM)
+    plot_violin(ax3, 1, boutons_NDNFact, color='#E9B86F')
+    ax3.set(xlim=[-0.5, 1.5], xticks=[0, 1], xticklabels=['ctrl', 'NDNF act.'], ylim=[0, 0.6], yticks=[0, 0.5],
+            ylabel='SOM bouton act.')
+    
+    if save:
+        fig.savefig('../results/figs/cosyne-collection/exp1-2_preinh-allneurons.png', dpi=300)
+        fig2.savefig('../results/figs/cosyne-collection/exp1-2_preinh-boutons-all.png', dpi=300)
+        fig3.savefig('../results/figs/cosyne-collection/exp1-2_preinh-boutons-violin.png', dpi=300)
+        [plt.close(ff) for ff in [fig, fig2, fig3]]
+
+
+if __name__ in "__main__":
+
+
+    # exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=True)
+
+    exp102_preinh_bouton_imaging(save=True)
+
+    plt.show()
