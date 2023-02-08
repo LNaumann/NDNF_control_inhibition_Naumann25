@@ -154,11 +154,93 @@ def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, 
         [plt.close(ff) for ff in [fig, fig2, fig3]]
 
 
+def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+    """
+    Experiment: Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
+
+    Parameters
+    - dur: duration of experiment (ms)
+    - dt: integration time step (ms)
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
+
+    # extract number of timesteps
+    nt = int(dur / dt)
+
+    # get default parameters
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # array for varying NDNF input
+    ndnf_input = np.arange(-1, 1, 0.05)
+
+    # empty arrays for recording stuff
+    rS_inh_record = []
+    rN_inh_record = []
+    rS_record = []
+    rN_record = []
+    cGABA_record = []
+    p_record = []
+
+    for i, I_activate in enumerate(ndnf_input):
+
+        # create input (stimulation of NDNF)
+        xFF = get_null_ff_input_arrays(nt, N_cells)
+        xFF['N'][:, :] = I_activate
+
+        # instantiate and run model
+        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                flag_pre_inh=pre_inh)
+        t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                               noise=noise)
+        # TODO: add init_noise?
+
+        # save stuff
+        rS_record.append(rS[-1])
+        rN_record.append(rN[-1])
+        rS_inh_record.append(np.mean(np.array(other['dend_inh_SOM'][-1])))
+        rN_inh_record.append(np.mean(np.array(other['dend_inh_NDNF'][-1])))
+        cGABA_record.append(cGABA[-1])
+        p_record.append(p[-1])
+
+    # plotting
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(2, 1, figsize=(2.1, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
+                                                                           'right': 0.95,
+                                                                           'height_ratios': [1, 1]}, sharex=True)
+    ax[0].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--')
+    ax[0].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--')
+    ax[1].plot(ndnf_input, np.mean(np.array(rS_record), axis=1), c=cSOM)
+    ax[1].plot(ndnf_input, np.mean(np.array(rN_record), axis=1), c=cNDNF)
+
+    # labels etc
+    ax[0].set(ylabel='dend. inhibition (au)', ylim=[-0.05, 1], yticks=[0, 1])
+    ax[1].set(xlabel='input to NDNF (au)', ylabel='neural activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5],
+              yticks=[0, 1, 2])
+    
+    fig2, ax2 = plt.subplots(2, 1, figsize=(2.1, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
+                                                                           'right': 0.95,
+                                                                           'height_ratios': [1, 1]}, sharex=True)
+    ax2[0].plot(ndnf_input, np.mean(np.array(cGABA_record), axis=1), c=cpi)
+    ax2[1].plot(ndnf_input, p_record, c=cpi)
+    ax2[0].set(ylabel='GABA conc. (au)')
+    ax2[1].set(ylabel='release p', xlabel='input to NDNF (au)')
+
+    # saving
+    if save:
+        fig.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity', dpi=300)
+        fig2.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity_GABA', dpi=300)
+        [plt.close(ff) for ff in [fig, fig2]]
+
+
 if __name__ in "__main__":
 
 
     # exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=True)
 
-    exp102_preinh_bouton_imaging(save=True)
+    # exp102_preinh_bouton_imaging(save=True)
+
+    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=True)
 
     plt.show()
