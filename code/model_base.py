@@ -21,6 +21,7 @@ class NetworkModel:
     """
 
     def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
+                 tauG=200, gamma=1,
                  flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False, flag_p_on_DN=False,
                  flag_with_NDNF=True, flag_with_PV=True):
 
@@ -50,7 +51,7 @@ class NetworkModel:
             self.w_mean['PN'] = 0
             self.w_mean['DN'] = 0
 
-        if not flag_with_NDNF:
+        if not flag_with_PV:
             bg_inputs['P'] = 0
             self.w_mean['PE'] = 0
             self.w_mean['EP'] = 0
@@ -77,7 +78,9 @@ class NetworkModel:
         self.tau_a = 100
         self.ba = 1 if flag_SOM_ad else 0
 
-        # presynaptic inhibition
+        # GABA spillover & presynaptic inhibition
+        self.tauG = tauG
+        self.gamma = gamma
         self.flag_pre_inh = flag_pre_inh
         self.b = b if flag_pre_inh else 0
         self.p_low = p_low
@@ -189,7 +192,7 @@ class NetworkModel:
             self.Xbg['S'] = rS0 - self.w_mean['SE'] * rE0 + self.w_mean['SV'] * rV0
             self.Xbg['P'] = rP0 - self.w_mean['PE'] * rE0 + self.w_mean['PS'] * rS0 + self.w_mean['PN'] * rN0 \
                             + self.w_mean['PP'] * rP0
-            print('background input:', self.Xbg)
+            # print('background input:', self.Xbg)
             # note: no need to scale weights by p0 here because the weight matrices are divided by p0 and then again
             #       multiplied by the current p during the simulation
 
@@ -213,6 +216,8 @@ class NetworkModel:
         aS = np.zeros(self.N_cells['S'])
         p = np.ones(nt)
         p[0] = p0 if self.flag_pre_inh else 1
+        cGABA = np.zeros((nt, self.N_cells['N']))
+        cGABA[0] = rN0
 
         # optional recording of stuff
         other = dict()
@@ -224,6 +229,8 @@ class NetworkModel:
         if monitor_currents:
             other['curr_rS'] = []
             other['curr_rN'] = []
+            other['curr_rE'] = []
+
 
         # activations pre rectification
         vS, vN, vE, vD, vP, vV = rS[0], rN[0], rE[0], rD[0], rP[0], rV[0]
@@ -244,7 +251,7 @@ class NetworkModel:
 
             # compute input currents
             curr_rE = self.wED * rD[ti] - self.Ws['EP'] @ rP[ti] + self.Xbg['E'] + xFF['E'][ti] + xiE
-            curr_rD = self.Ws['DE'] @ rE[ti] - p[ti]*self.Ws['DS'] @ rS[ti] - pDN*self.Ws['DN'] @ rN[ti]\
+            curr_rD = self.Ws['DE'] @ rE[ti] - p[ti]*self.Ws['DS'] @ rS[ti] - pDN*self.Ws['DN'] @ cGABA[ti]\
                       + self.Xbg['D'] + xFF['D'][ti] + xiD
             curr_rS = self.Ws['SE'] @ rE[ti] - self.Ws['SV']@rV[ti] + self.Xbg['S'] + xFF['S'][ti] + xiS
             curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti] + xiN
@@ -264,7 +271,11 @@ class NetworkModel:
             if self.flag_SOM_ad:
                 aS += (-aS + self.ba*rS[ti]) / self.tau_a * dt
             if self.flag_pre_inh:
-                p[ti+1] = p[ti] + (-p[ti] + self.g_func(np.mean(rN[ti]))) / self.taup * dt
+                p[ti+1] = p[ti] + (-p[ti] + self.g_func(np.mean(cGABA[ti]))) / self.taup * dt
+
+            # GABA spillover
+            cGABA[ti+1] = cGABA[ti] + (-cGABA[ti] + self.gamma*rN[ti]) / self.tauG * dt
+            cGABA[ti+1] = np.maximum(cGABA[ti+1], 0)  # probably not necesarry, better safe than sorry
 
             # rectification and saving
             rE[ti + 1] = np.maximum(vE, 0)
@@ -279,13 +290,14 @@ class NetworkModel:
 
             if monitor_dend_inh:
                 other['dend_inh_SOM'].append(p[ti]*self.Ws['DS']@rS[ti])
-                other['dend_inh_NDNF'].append(pDN*self.Ws['DN']@rN[ti])
+                other['dend_inh_NDNF'].append(pDN*self.Ws['DN']@cGABA[ti])
 
             if monitor_currents:
                 other['curr_rS'].append(curr_rS)
                 other['curr_rN'].append(curr_rN)
+                other['curr_rE'].append(curr_rE)
 
-        return t, rE, rD, rS, rN, rP, rV, p, other
+        return t, rE, rD, rS, rN, rP, rV, p, cGABA, other
 
 
 def get_default_params(flag_mean_pop=False):
@@ -311,18 +323,20 @@ def get_default_params(flag_mean_pop=False):
 
 if __name__ in "__main__":
 
-    # ToDo: clean this bottom part here up
+    mean_pop = True
+    w_hetero = False
+    wnoise = 0  # 0.1
+    noise = 0  # 0.2
 
     # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params()
+    N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params(flag_mean_pop=mean_pop)
 
     # w_mean['NS'] = 0  # block SOM->NDNF inhibition
-    # N_cells = dict(E=1, D=1, S=1, N=1, P=1)
 
     # instantiate model
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=True,
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=w_hetero,
                          flag_pre_inh=True)
-    model.plot_weight_mats()
+    # model.plot_weight_mats()
 
     # simulation paramters
     dur = 1000
@@ -356,21 +370,22 @@ if __name__ in "__main__":
     # xFF['N'] = sensory_stim**0.3
 
     # run model
-    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=0.2, dt=dt, monitor_boutons=True,
+    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, init_noise=wnoise, noise=noise, dt=dt, monitor_boutons=True,
                                                     monitor_currents=True, calc_bg_input=True)
 
     # plotting
-    fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=150, sharex=True)
+    fig, ax = plt.subplots(7, 1, figsize=(4, 5), dpi=150, sharex=True)
     ax[0].plot(t, rE, c='C3', alpha=0.5)
     ax[1].plot(t, rD, c='k', alpha=0.5)
     ax[2].plot(t, rS, c='C0', alpha=0.5)
     ax[3].plot(t, rN, c='C1', alpha=0.5)
     ax[4].plot(t, rP, c='darkblue', alpha=0.5)
-    ax[5].plot(t, p, c='C2', alpha=1)
+    ax[5].plot(t, cGABA, c='C2', alpha=1)
+    ax[6].plot(t, p, c='C2', alpha=1)
 
-    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
+    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV', 'GABA']):
         ax[i].set(ylabel=label, ylim=[0, 3])
-    ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
+    ax[-1].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
 
     fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=400, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
     boutons = np.array(other['boutons_SOM'])
