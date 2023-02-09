@@ -237,10 +237,10 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
 if __name__ in "__main__":
 
 
-    # exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=True)
+    exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=False)
 
-    # exp102_preinh_bouton_imaging(save=True)
+    exp102_preinh_bouton_imaging(save=False)
 
-    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=True)
+    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=False)
 
     plt.show()
