@@ -334,7 +334,7 @@ def ex_bouton_imaging(dur=1000, ts=300, te=400, dt=1, stim_NDNF=2, noise=0.0, fl
     xFF['N'][ts:te] = stim_NDNF
 
     # run model
-    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
+    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
                                                     monitor_currents=True, calc_bg_input=True)
 
     # plotting
@@ -412,7 +412,7 @@ def ex_layer_specific_inhibition(dur=1000, dt=1, noise=0.0, flag_w_hetero=True, 
         # instantiate and run model
         model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=flag_w_hetero,
                              flag_pre_inh=True)
-        t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+        t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
                                                         noise=noise)
 
         # save stuff
@@ -473,7 +473,7 @@ def ex_switch_activity(noise=0.0, flag_w_hetero=True, save=False):
     xFF['N'][t_inact_s:t_inact_e] = -1.5
 
     # run model
-    t, rE, rD, rS, rN, rP, rV, p, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
+    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
                                                     monitor_dend_inh=True, noise=noise)
 
     # plotting
@@ -559,6 +559,18 @@ def get_null_ff_input_arrays(nt, N_cells):
     return xFF_null
 
 
+def get_model_colours():
+
+    # colours
+    cPC = '#B83D49'
+    cPV = '#345377'
+    cSOM = '#5282BA'
+    cNDNF = '#E18E69'
+    cVIP = '#D1BECF'
+    cpi = '#A7C274'
+    return cPC, cPV, cSOM, cNDNF, cVIP, cpi
+
+
 if __name__ in "__main__":
 
     # run different experiments; comment in or out to run only some of them
@@ -571,9 +583,9 @@ if __name__ in "__main__":
 
     # generating figures for cosyne abstract submission
     noise = 0.15
-    # ex_layer_specific_inhibition(save='fig2c.pdf', noise=noise)
-    # ex_switch_activity(save='fig2d.pdf', noise=noise)
+    # ex_layer_specific_inhibition(noise=noise, save=False) # 'fig2c.pdf', )
+    ex_switch_activity(noise=noise, save=False) #'fig2d.pdf', )
     # plot_gfunc(save='fig2b.pdf')
-    ex_perturb_circuit(save='fig1b.pdf', noise=noise)
-    fig1_weights_role(save='fig1c.pdf', noise=noise)
+    # ex_perturb_circuit(save=False)  #save='fig1b.pdf', noise=noise)
+    # fig1_weights_role(save='fig1c.pdf', noise=noise)
     plt.show()
