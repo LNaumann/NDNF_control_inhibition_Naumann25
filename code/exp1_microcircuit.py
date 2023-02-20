@@ -234,6 +234,10 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
         [plt.close(ff) for ff in [fig, fig2]]
 
 
+    
+    
+
+
 if __name__ in "__main__":
 
 
