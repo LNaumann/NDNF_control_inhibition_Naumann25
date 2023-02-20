@@ -260,12 +260,12 @@ class NetworkModel:
             curr_rV = -self.Ws['VS']@rS[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
 
             # Euler integration (pre rectification)  # ToDo: -rE or -vE+
-            vE = vE + (-rE[ti] + curr_rE) / self.taus['E'] * dt
-            vD = vD + (-rD[ti] + curr_rD) / self.taus['D'] * dt
-            vS = vS + (-rS[ti] + curr_rS - aS) / self.taus['S'] * dt
-            vN = vN + (-rN[ti] + curr_rN) / self.taus['N'] * dt
-            vP = vP + (-rP[ti] + curr_rP) / self.taus['P'] * dt
-            vV = vV + (-rV[ti] + curr_rV) / self.taus['V'] * dt
+            vE = vE + (-vE + curr_rE) / self.taus['E'] * dt
+            vD = vD + (-vD + curr_rD) / self.taus['D'] * dt
+            vS = vS + (-vS + curr_rS - aS) / self.taus['S'] * dt
+            vN = vN + (-vN + curr_rN) / self.taus['N'] * dt
+            vP = vP + (-vP + curr_rP) / self.taus['P'] * dt
+            vV = vV + (-vV + curr_rV) / self.taus['V'] * dt
 
             # adaptation and other shenanigans
             if self.flag_SOM_ad:
