@@ -87,6 +87,8 @@ class NetworkModel:
         self.r0 = r0
         self.taup = taup
         self.flag_p_on_DN = flag_p_on_DN
+        self.weights_scaled_by = 1
+
 
     def make_weight_mat(self, Npre, Npost, c_prob, w_mean, w_std_rel=0, no_autapse=False):
         """
@@ -168,10 +170,12 @@ class NetworkModel:
         if self.flag_pre_inh:
             p0 = self.g_func(rN0)
             # scale weights by release probability
-            self.Ws['NS'] = self.Ws['NS']/p0
-            self.Ws['DS'] = self.Ws['DS']/p0
+            self.Ws['NS'] = self.Ws['NS']/p0*self.weights_scaled_by
+            self.Ws['DS'] = self.Ws['DS']/p0*self.weights_scaled_by
             if self.flag_p_on_DN:
-                self.Ws['DN'] = self.Ws['DN']/p0
+                self.Ws['DN'] = self.Ws['DN']/p0*self.weights_scaled_by
+            self.weights_scaled_by = p0  # we're saving this so we don't scale weights again upon next run
+                                         # if the function is called again with the same p0, weights remain the same
         else:
             p0 = 1
 
