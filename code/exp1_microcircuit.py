@@ -120,12 +120,12 @@ def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, 
     # plot 1: response of all neurons to NDNF stimulation
     dpi = 300 if save else DPI
     fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=dpi, sharex=True)
-    ax[0].plot(t, rE, c='C3', alpha=0.5)
-    ax[1].plot(t, rD, c='k', alpha=0.5)
-    ax[2].plot(t, rS, c='C0', alpha=0.5)
-    ax[3].plot(t, rN, c='C1', alpha=0.5)
-    ax[4].plot(t, rP, c='darkblue', alpha=0.5)
-    ax[5].plot(t, p, c='C2', alpha=1)
+    ax[4].plot(t, rE, c=cPC, alpha=0.5)
+    ax[3].plot(t, rD, c='k', alpha=0.5)
+    ax[1].plot(t, rS, c=cSOM, alpha=0.5)
+    ax[0].plot(t, rN, c=cNDNF, alpha=0.5)
+    ax[2].plot(t, rP, c=cPV, alpha=0.5)
+    ax[5].plot(t, p, c=cpi, alpha=1)
     for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
@@ -241,10 +241,10 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
 if __name__ in "__main__":
 
 
-    exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=False)
+    # exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=False)
 
-    exp102_preinh_bouton_imaging(save=False)
+    exp102_preinh_bouton_imaging(save=True)
 
-    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=False)
+    # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=False)
 
     plt.show()
