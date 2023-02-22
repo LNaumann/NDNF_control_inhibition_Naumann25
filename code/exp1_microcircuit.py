@@ -8,6 +8,7 @@ Experiments 1: NDNF interneurons as part of the microcircuit.
 import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('pretty')
+import seaborn as sns
 import model_base as mb
 from experiments import get_null_ff_input_arrays, get_model_colours, plot_violin
 
@@ -17,7 +18,7 @@ DPI = 150
 
 def exp101_paired_recordings_invitro(dur=800, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
-    Run experiment of paired "in vitro" recordings and plot.
+    Experiment1: paired "in vitro" recordings and plot.
     - stimulate NDNF and SOM, record from PC, SOM and NDNF
     - "in vitro" means all cells have 0 baseline activity
     - paired recordings means the ingoing currents to each cell
@@ -81,7 +82,7 @@ def exp101_paired_recordings_invitro(dur=800, dt=1, w_hetero=False, mean_pop=Tru
 
 def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, w_hetero=True, mean_pop=False, pre_inh=True, noise=0.2, save=False):
     """
-    Experiment: Image SOM bouton in response to stimulation of NDNF interneurons.
+    Experiment2: Image SOM bouton in response to stimulation of NDNF interneurons.
 
     Parameters
     - dur: duration of experiment (ms)
@@ -156,7 +157,7 @@ def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, 
 
 def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
     """
-    Experiment: Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
+    Experiment3: Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
 
     Parameters
     - dur: duration of experiment (ms)
@@ -211,11 +212,12 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
                                                                            'height_ratios': [1, 1]}, sharex=True)
     ax[0].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--')
     ax[0].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--')
+    ax[0].plot(ndnf_input, np.array(rS_inh_record)+np.array(rN_inh_record), c='silver', ls='-')
     ax[1].plot(ndnf_input, np.mean(np.array(rS_record), axis=1), c=cSOM)
     ax[1].plot(ndnf_input, np.mean(np.array(rN_record), axis=1), c=cNDNF)
 
     # labels etc
-    ax[0].set(ylabel='dend. inhibition (au)', ylim=[-0.05, 1], yticks=[0, 1])
+    ax[0].set(ylabel='dend. inhibition (au)', ylim=[-0.05, 1.3], yticks=[0, 1])
     ax[1].set(xlabel='input to NDNF (au)', ylabel='neural activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5],
               yticks=[0, 1, 2])
     
@@ -229,22 +231,154 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
 
     # saving
     if save:
-        fig.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity', dpi=300)
+        fig.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity_nopreinh', dpi=300)
         fig2.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity_GABA', dpi=300)
         [plt.close(ff) for ff in [fig, fig2]]
 
 
-    
-    
+def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+    """
+    Experiment3b: Vary input to NDNF interneurons and NDNF->dendrite weight, check how this affects total dendritic inhibition.
 
+    Parameters
+    - dur: duration of experiment (ms)
+    - dt: integration time step (ms)
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
+
+    # extract number of timesteps
+    nt = int(dur / dt)
+
+    # get default parameters
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # array for varying NDNF input
+    ndnf_input = np.arange(-1, 1, 0.05)
+    weightsDN = np.arange(0, 1.1, 0.2)
+
+    # empty arrays for recording stuff
+    rS_inh_record = np.zeros((len(ndnf_input), len(weightsDN)))
+    rN_inh_record = np.zeros((len(ndnf_input), len(weightsDN)))
+
+    # set up figure
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(1, 1, figsize=(3, 2.1), dpi=dpi, gridspec_kw={'left': 0.2, 'bottom': 0.2, 'top': 0.95,
+                                                                           'right': 0.75}, sharex=True)
+    cols = sns.color_palette(f"blend:{cSOM},{cNDNF}", n_colors=len(weightsDN))
+
+    for j, wDN in enumerate(weightsDN):
+
+        w_mean['DN'] = wDN
+        print(f"NDNF/SOM dendritic inh: {w_mean['DN']/w_mean['DS']:1.2f}")
+
+        # instantiate and run model
+        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                flag_pre_inh=pre_inh)
+
+        for i, I_activate in enumerate(ndnf_input):
+
+            # create input (stimulation of NDNF)
+            xFF = get_null_ff_input_arrays(nt, N_cells)
+            xFF['N'][:, :] = I_activate
+
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                               noise=noise)
+            # TODO: add init_noise?
+
+            # save stuff
+            rS_inh_record[i, j] = np.mean(np.array(other['dend_inh_SOM'][-1]))
+            rN_inh_record[i, j] = np.mean(np.array(other['dend_inh_NDNF'][-1]))
+
+        ax.plot(ndnf_input, rS_inh_record[:, j]+rN_inh_record[:, j], c=cols[j], ls='-', label=f"{wDN/w_mean['DS']:1.1f}")
+    
+    ax.set(xlabel='NDNF input (rel)', xticks=np.arange(-1, 1.1, 0.5), ylabel='total dendritic inh.')
+    ax.legend(loc=(1.01, 0.2), frameon=False, handlelength=1, title='N/S -> D')
+
+    # saving
+    if save:
+        fig.savefig('../results/figs/cosyne-collection/exp1-3b_dendritic_inhibition', dpi=300)
+        plt.close(fig) 
+
+
+def exp103c_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+    """
+    Experiment3b: Vary input to NDNF interneurons and pre inh strength, check how this affects NDNF inhibition to dendrite.
+
+    Parameters
+    - dur: duration of experiment (ms)
+    - dt: integration time step (ms)
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
+
+    # extract number of timesteps
+    nt = int(dur / dt)
+
+    # get default parameters
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # instantiate and run model
+    model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                            flag_pre_inh=pre_inh)
+
+    # array for varying NDNF input
+    ndnf_input = np.arange(-1, 1, 0.05)
+    betas = np.arange(0, 0.61, 0.1)
+
+    # empty arrays for recording stuff
+    # rS_inh_record = np.zeros((len(ndnf_input), len(betas)))
+    rN_inh_record = np.zeros((len(ndnf_input), len(betas)))
+
+    # set up figure
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(1, 1, figsize=(3, 2.1), dpi=dpi, gridspec_kw={'left': 0.2, 'bottom': 0.2, 'top': 0.95,
+                                                                           'right': 0.75}, sharex=True)
+    cols = sns.color_palette(f"dark:{cpi}", n_colors=len(betas)+1)[1:]
+
+    for j, bb in enumerate(betas):
+
+        print(f"beta: {bb:1.1f}")
+
+        model.b = bb
+
+        for i, I_activate in enumerate(ndnf_input):
+
+            # create input (stimulation of NDNF)
+            xFF = get_null_ff_input_arrays(nt, N_cells)
+            xFF['N'][:, :] = I_activate
+
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                               noise=noise)
+            # TODO: add init_noise?
+
+            # save stuff
+            # rS_inh_record[i, j] = np.mean(np.array(other['dend_inh_SOM'][-1]))
+            rN_inh_record[i, j] = np.mean(np.array(other['dend_inh_NDNF'][-1]))
+
+        ax.plot(ndnf_input, rN_inh_record[:, j], c=cols[j], ls='-', label=f"{bb:1.1f}")
+    
+    ax.set(xlabel='NDNF input (rel)', xticks=np.arange(-1, 1.1, 0.5), ylabel='NDNF->dend. inh.')
+    ax.legend(loc=(1.01, 0.2), frameon=False, handlelength=1, title='b')
+
+    # saving
+    if save:
+        fig.savefig('../results/figs/cosyne-collection/exp1-3c_amplification_NDNFinh', dpi=300)
+        plt.close(fig)
 
 if __name__ in "__main__":
 
 
     # exp101_paired_recordings_invitro(mean_pop=True, w_hetero=True, noise=0, save=False)
 
-    exp102_preinh_bouton_imaging(save=True)
+    # exp102_preinh_bouton_imaging(save=True)
 
     # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=False)
+
+    # exp103b_total_dendritic_inhibition(pre_inh=True, save=False)
+
+    exp103c_amplifcation_ndnf_inhibition(save=False)
 
     plt.show()
