@@ -35,6 +35,7 @@ class NetworkModel:
         self.flag_w_hetero = flag_w_hetero
         self.flag_with_VIP = flag_with_VIP
         self.flag_with_NDNF = flag_with_NDNF
+        self.flag_with_PV = flag_with_PV
 
         # Create weight matrices
         if flag_w_hetero:
@@ -44,6 +45,8 @@ class NetworkModel:
 
         if not flag_with_VIP:
             self.w_mean['SV'] = 0
+            self.w_mean['PV'] = 0
+            self.w_mean['VE'] = 0
             bg_inputs['V'] = 0
 
         if not flag_with_NDNF:
@@ -55,6 +58,7 @@ class NetworkModel:
             bg_inputs['P'] = 0
             self.w_mean['PE'] = 0
             self.w_mean['EP'] = 0
+
 
         # create weight matrices
         self.Ws = dict()  # dictionary of weight matrices
@@ -187,15 +191,20 @@ class NetworkModel:
                 self.Xbg['N'] = 0
                 rN0 = 0
             if self.flag_with_VIP:
-                self.Xbg['V'] = rV0 + self.w_mean['VS'] * rS0
+                self.Xbg['V'] = rV0 - self.w_mean['VE'] * rE0 + self.w_mean['VS'] * rS0 
             else:
                 self.Xbg['V'] = 0
                 rV0 = 0
-            self.Xbg['E'] = rE0 + self.w_mean['EP'] * rP0 - self.wED * rD0
-            self.Xbg['D'] = rD0 + self.w_mean['DS'] * rS0 + self.w_mean['DN'] * rN0
-            self.Xbg['S'] = rS0 - self.w_mean['SE'] * rE0 + self.w_mean['SV'] * rV0
-            self.Xbg['P'] = rP0 - self.w_mean['PE'] * rE0 + self.w_mean['PS'] * rS0 + self.w_mean['PN'] * rN0 \
+            if self.flag_with_PV:
+                self.Xbg['P'] = rP0 - self.w_mean['PE'] * rE0 + self.w_mean['PS'] * rS0 + self.w_mean['PN'] * rN0 + self.w_mean['PV'] * rV0 \
                             + self.w_mean['PP'] * rP0
+            else:
+                self.Xbg['P'] = 0
+                rP0 = 0
+            self.Xbg['E'] = rE0 + self.w_mean['EP'] * rP0 - self.wED * rD0
+            self.Xbg['D'] = rD0 + self.w_mean['DS'] * rS0 + self.w_mean['DN'] * rN0 - self.w_mean['DE'] * rE0
+            self.Xbg['S'] = rS0 - self.w_mean['SE'] * rE0 + self.w_mean['SV'] * rV0
+            
             # print('background input:', self.Xbg)
             # note: no need to scale weights by p0 here because the weight matrices are divided by p0 and then again
             #       multiplied by the current p during the simulation
@@ -260,8 +269,8 @@ class NetworkModel:
             curr_rS = self.Ws['SE'] @ rE[ti] - self.Ws['SV']@rV[ti] + self.Xbg['S'] + xFF['S'][ti] + xiS
             curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti] + xiN
             curr_rP = self.Ws['PE'] @ rE[ti] - self.Ws['PS'] @ rS[ti] - self.Ws['PN'] @ rN[ti] - self.Ws['PP'] @ rP[ti] \
-                      + self.Xbg['P'] + xFF['P'][ti] + xiP
-            curr_rV = -self.Ws['VS']@rS[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
+                      - self.Ws['PV'] @ rV[ti] + self.Xbg['P'] + xFF['P'][ti] + xiP
+            curr_rV = -self.Ws['VS']@rS[ti] + self.Ws['VE']@rE[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
 
             # Euler integration (pre rectification)  # ToDo: -rE or -vE+
             vE = vE + (-vE + curr_rE) / self.taus['E'] * dt
@@ -316,9 +325,9 @@ def get_default_params(flag_mean_pop=False):
     if flag_mean_pop:
         N_cells = dict(E=1, D=1, S=1, N=1, P=1, V=1)
     # w_mean = dict(NS=0.5, DS=0.5, DN=0.4, SE=0.8, NN=0.3, PS=0, PN=0, PP=0, PE=0, EP=0, DE=0)  # no PVs
-    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5)
+    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5, PV=0, VE=1)
     conn_prob = dict(NS=0.9, DS=0.55, DN=0.5, SE=0.35, NN=0.5, PS=0.6, PN=0.3, PP=0.5, PE=0.7, EP=0.6, DE=0.1,
-                     VS=0.5, SV=0.5)
+                     VS=0.5, SV=0.5, PV=0.5, VE=0.1)
     bg_inputs = dict(E=0.5, D=2, N=2, S=0.5, P=1.5, V=1.3)
     taus = dict(S=20, N=40, E=10, P=10, D=20, V=15)
 
@@ -331,19 +340,23 @@ if __name__ in "__main__":
     w_hetero = False
     wnoise = 0  # 0.1
     noise = 0  # 0.2
+    pre_inh = True
 
     # define parameter dictionaries
     N_cells, w_mean, conn_prob, bg_inputs, taus = get_default_params(flag_mean_pop=mean_pop)
 
     # w_mean['NS'] = 0  # block SOM->NDNF inhibition
 
+    w_mean['DN'] = 0.4  # increase NDNF->dendrite inhibition
+    w_mean['PN'] = 0
+
     # instantiate model
-    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, flag_SOM_ad=False, flag_w_hetero=w_hetero,
-                         flag_pre_inh=True)
+    model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False, flag_w_hetero=w_hetero,
+                         flag_pre_inh=pre_inh)
     # model.plot_weight_mats()
 
     # simulation paramters
-    dur = 1000
+    dur = 3000
     dt = 1
     nt = int(dur/dt)
 
@@ -357,10 +370,15 @@ if __name__ in "__main__":
                     V=np.zeros((nt, model.N_cells['P'])))
 
     # B2: stimulate NDNF
-    ts, te = 300, 400
-    stim_NDNF = 2
+    ts, te = 1000, 2000
+    stim_strength = 1
     xFF = xFF_null.copy()
-    xFF['N'][ts:te] = stim_NDNF
+    xFF['N'][ts:te] = stim_strength
+    xFF['D'][ts:te] = stim_strength
+
+    xFF['S'][1000:1200,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
+
+    xFF['S'][1700:1900,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
 
     # C: sensory stimulation
     # tau1 = 150
@@ -391,12 +409,12 @@ if __name__ in "__main__":
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[-1].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
 
-    fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=400, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
-    boutons = np.array(other['boutons_SOM'])
-    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
-    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0, vmax=0.15)
-    plt.colorbar(cm, ticks=[0, 0.1])
-    ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, 400], xticks=[0, 1000])
+    # fig2, ax2 = plt.subplots(1, 1, figsize=(2, 1.1), dpi=400, gridspec_kw={'left':0.3, 'right':0.9, 'bottom':0.35})
+    # boutons = np.array(other['boutons_SOM'])
+    # boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+    # cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0, vmax=0.15)
+    # plt.colorbar(cm, ticks=[0, 0.1])
+    # ax2.set(xlabel='time (ms)', ylabel='# bouton', yticks=[0, 400], xticks=[0, 1000])
 
     # plt.tight_layout()
 

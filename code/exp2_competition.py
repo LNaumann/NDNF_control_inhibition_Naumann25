@@ -8,7 +8,9 @@ Experiments 2: Competition between NDNF interneurons and SOM outputs in layer 1.
 
 import numpy as np
 import matplotlib.pyplot as plt
-plt.style.use('pretty')
+plt.style.use('poster')
+import matplotlib as mpl
+lw = mpl.rcParams['lines.linewidth']
 import model_base as mb
 from experiments import get_null_ff_input_arrays, get_model_colours, plot_violin
 import seaborn as sns
@@ -18,7 +20,8 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 DPI = 150
 
 
-def ex202_mutual_inhibition_switch(noise=0.0, wNS=1.4, w_hetero=False, mean_pop=True, pre_inh=True, reduced=False, save=False):
+def ex202_mutual_inhibition_switch(noise=0.0, wNS=1.4, w_hetero=False, mean_pop=True, pre_inh=True, reduced=False, save=False, sine=False,
+                                   stimup=1, stimdown=-1):
     """
     Experiment: Switch between NDNDF and SOM-dominated dendritic inhibition. Network is in bistable mututal inhibition
                 regime. Activate and inactive NDNF interneurons to create switching.
@@ -44,24 +47,24 @@ def ex202_mutual_inhibition_switch(noise=0.0, wNS=1.4, w_hetero=False, mean_pop=
                            flag_pre_inh=pre_inh)
 
     # simulation paramters
-    dur = 20000
+    dur = 10000
     dt = 1
     nt = int(dur/dt)
 
     # generate inputs
-    t_act_s, t_act_e = 3000, 5000
-    t_inact_s, t_inact_e = 10000, 12000
+    t_act_s, t_act_e = 1000, 2000
+    t_inact_s, t_inact_e = 5000, 6000
     xFF = get_null_ff_input_arrays(nt, N_cells)
-    xFF['N'][t_act_s:t_act_e] = 1.
-    xFF['N'][t_inact_s:t_inact_e] = -1
+    xFF['N'][t_act_s:t_act_e] = stimup
+    xFF['N'][t_inact_s:t_inact_e] = stimdown
 
     # add time-varying inputs to SOM (and NDNF)
     tt = np.arange(0, dur/1000+1, dt/1000)  # generate 1s longer to enable shifting when quantifying signal
     sine1 = np.sin(2*np.pi*tt*1)            # but then don't use the first second
-    sine2 = np.sin(2*np.pi*tt*4)
-    amp_sine = 0.5
-    xFF['N'][:,:] +=1* amp_sine*np.tile(sine1[1000:], [N_cells['N'], 1]).T
-    # xFF['S'][:,:] += amp_sine*np.tile(sine2[1000:], [N_cells['S'], 1]).T
+    sine2 = np.sin(2*np.pi*tt*2)
+    amp_sine = 0.5 if sine else 0
+    # xFF['N'][:,:] +=1* amp_sine*np.tile(sine1[1000:], [N_cells['N'], 1]).T
+    xFF['S'][:,:] += amp_sine*np.tile(sine2[1000:], [N_cells['S'], 1]).T
 
     # run model
     t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
@@ -69,59 +72,90 @@ def ex202_mutual_inhibition_switch(noise=0.0, wNS=1.4, w_hetero=False, mean_pop=
 
     # plotting
     dpi = 300 if save else DPI
-    fig, ax = plt.subplots(3, 1, figsize=(3, 3.5), dpi=dpi, sharex=True,
+    fig, ax = plt.subplots(4, 1, figsize=(4.5, 6), dpi=dpi, sharex=True,
                            gridspec_kw={'left': 0.15, 'bottom': 0.15, 'top': 0.95, 'right': 0.95,
-                                        'height_ratios': [1, 1, 0.5]})
-    ax[1].plot(t/1000, rN, c=cNDNF, alpha=1, lw=1, label='NDNF')
-    ax[1].plot(t/1000, rS, c=cSOM, alpha=1, lw=1, label='SOM')
-    ax[1].legend(loc='best', frameon=False)
-    ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_NDNF']), axis=1), c=cNDNF, ls='-', lw=1)
-    ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_SOM']), axis=1), c=cSOM, ls='-', lw=1)
-    ax[2].plot(t/1000, p, c=cpi, alpha=1)
+                                        'height_ratios': [1, 1, 1, 1]})
+    alpha = 0.5
+    ax[0].plot(t/1000, rN, c=cNDNF, alpha=alpha, lw=1, label='NDNF')
+    ax[0].plot(t/1000, rS, c=cSOM, alpha=alpha, lw=1, label='SOM')
+    ax[2].plot(t/1000, rE, c=cPC, alpha=alpha, lw=1)
+    ax[2].plot(t/1000, rE, alpha=alpha, c= sns.color_palette(f"light:{cPC}", n_colors=3)[1], lw=1)
+    ax[2].plot(t/1000, np.mean(rE, axis=1), alpha=1, c=cPC, lw=2)
+    # ax[1].legend(loc='best')
+    ax[1].plot(t/1000, np.mean(np.array(other['dend_inh_NDNF']), axis=1), c=cNDNF, ls='--', lw=lw)
+    ax[1].plot(t/1000, np.mean(np.array(other['dend_inh_SOM']), axis=1), c=cSOM, ls='--', lw=lw)
+    # ax[0].plot(t/1000, np.mean(np.array(other['dend_inh_SOM']), axis=1)+np.mean(np.array(other['dend_inh_NDNF']), axis=1),
+            #    c='silver', ls='--', lw=lw, zorder=-1)
+    ax[3].plot(t/1000, p, c=cpi, alpha=1, lw=lw)
 
     # labels etc
-    ax[0].set(ylabel='dend. inh. (au)', ylim=[-0.1, 2], yticks=[0, 1])
-    ax[1].set(ylabel='activity (au)', ylim=[-0.1, 3.5], yticks=[0, 2])
-    ax[2].set(ylabel='release', ylim=[-0.05, 1.05], yticks=[0, 1], xlabel='time (s)')#, xticks=[0, 1, 2, 3])
+    ax[1].set(ylabel='dend inh', ylim=[-0.1, 2], yticks=[0, 2])
+    ax[0].set(ylabel='IN act.', ylim=[-0.1, 3.5], yticks=[0, 2])
+    ax[2].set(ylabel='PC act.', ylim=[-0.1, 2], yticks=[0, 2])
+    ax[3].set(ylabel='p', ylim=[-0.05, 1.05], yticks=[0, 1], xlabel='time (s)')#, xticks=[0, 1, 2, 3])
 
-    fig2, ax2 = plt.subplots(4, 1, figsize=(3, 3.5), dpi=dpi, sharex=True, sharey=False,
-                             gridspec_kw={'left': 0.15, 'bottom': 0.15, 'top': 0.95, 'right': 0.95})
+    fig2, ax2 = plt.subplots(3, 1, figsize=(5, 4.4), dpi=dpi, sharex=True, sharey=False,
+                             gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95, 'right': 0.95, 'hspace': 0.25})
     # ax2[1].plot(t/1000, sine2[1000:]/4+1, alpha=1, c='darkturquoise', lw=1)
-    ax2[1].plot(t/1000, rE, alpha=1, c=cPC, lw=1)
-    ax2[0].plot(t/1000, rD, alpha=1, c='k', lw=1)
-    ax2[2].plot(t/1000, rP, alpha=1, c=cPV, lw=1)
+    cPClight = sns.color_palette(f"light:{cPC}", n_colors=3)[1]
+    ax2[2].plot(t/1000, rE, alpha=alpha, c=cPClight, lw=1)
+    ax2[2].plot(t/1000, np.mean(rE, axis=1), alpha=1, c=cPC, lw=2)
+    ax2[1].plot(t/1000, rD, alpha=alpha, c='gray', lw=1)
+    ax2[1].plot(t/1000, np.mean(rD, axis=1), alpha=1, c='k', lw=2)
+    ax2[0].plot(t/1000, rN, alpha=alpha, c=cNDNF, lw=1)
+    ax2[0].plot(t/1000, rS, alpha=alpha, c=cSOM, lw=1)
+
 
     # plot contribution of signals
     rEmu = np.mean(rE, axis=1)
+    rDmu = np.mean(rD, axis=1)
     wbin = 1000
     sine2_shift = sine2[1000-40:nt+1000-40]  # input to NDNF
     sine1_shift = sine1[1000-200:nt+1000-200]    # input to SOM
     Xfull = np.array([sine1_shift, sine2_shift]).T
 
-    betas = np.zeros((nt//wbin, 2))
-    for ti in range(nt//wbin):
-        X = Xfull[ti*wbin:(ti+1)*wbin]
-        y = rEmu[ti*wbin:(ti+1)*wbin]- np.mean(rEmu[ti*wbin:(ti+1)*wbin])
-        betas[ti] = np.linalg.inv(X.T@X)@(X.T@y)
-    
-    # corrs = np.array([np.corrcoef(rEmu[i*wbin:(i+1)*wbin], sine2[i*wbin:(i+1)*wbin])[0, 1] for i in range(nt//wbin)])
-    # corrs2 = np.array([np.corrcoef(rEmu[i*wbin:(i+1)*wbin], sine1[i*wbin:(i+1)*wbin])[0, 1] for i in range(nt//wbin)])
-    ax2[1].plot(t/1000, sine1_shift/4+1, alpha=1, c='goldenrod', lw=1, zorder=-10)
-    ax2[1].plot(t/1000, sine2_shift/4+1, alpha=1, c='darkturquoise', lw=1, zorder=-10)
-    ax2[3].plot(np.arange(0, nt, wbin)/1000, betas[:, 1], '.-', c='mediumturquoise', ms=5)
-    ax2[3].plot(np.arange(0, nt, wbin)/1000, betas[:, 0], '.-', c='goldenrod', ms=5)
+    quantify = False
+    if quantify:
+        betas = np.zeros((nt//wbin, 2))
+        betas_dend = np.zeros((nt//wbin, 2))
+        for ti in range(nt//wbin):
+            tts, tte = ti*wbin, (ti+1)*wbin
+            betas[ti] = quantify_signals([sine1_shift[tts:tte], sine2_shift[tts:tte]], rEmu[tts:tte])
+            betas_dend[ti] = quantify_signals([sine1_shift[tts:tte], sine2_shift[tts:tte]], rDmu[tts:tte])
+        ax2[-1].plot(np.arange(0, nt, wbin)/1000, betas[:, 1], '.-', c=cSOM, ms=lw*3, lw=lw)
+        ax2[-1].hlines(0, 0, 10, color='k', ls=':', lw=2)
     [ax2[ii].set(ylim=[0, 2]) for ii in range(3)]
-    ax2[0].set(ylabel='dend act.')
-    ax2[1].set(ylabel='PC rate')
-    ax2[2].set(ylabel='PV rate')
-    ax2[3].set(ylabel='corr inp-rE', xlabel='time (s)')  #ylim=[-1, 1], 
+    ax2[1].set(ylabel='dend act.')
+    ax2[2].set(ylabel='PC act.')
+    ax2[0].set(ylabel='IN act.', ylim=[0, 3], yticks=[0, 2])
+    ax2[-1].set(xlabel='time (s)')
+    # ax2[3].set(ylabel='signal', xlabel='time (s)', ylim=[-0.15, 0.15])  #ylim=[-1, 1], 
+
+    # zoom-in:
+    fig3, ax3 = plt.subplots(1, 2, figsize=(5, 1.2), dpi=dpi, sharey=True, gridspec_kw={'left': 0.25, 'bottom': 0., 'top': 1, 'right': 0.95, 'wspace': 0.4})
+    zs1, ze1 = 3000, 5000
+    zs2, ze2 = 8000, 10000
+    ax3[0].plot((t/1000)[zs1:ze1], rE[zs1:ze1], c=cPClight, lw=1, alpha=0.5)
+    ax3[1].plot((t/1000)[zs2:ze2], rE[zs2:ze2], c=cPClight, lw=1, alpha=0.5)
+
+    ax3[0].plot((t/1000)[zs1:ze1], np.mean(rE, axis=1)[zs1:ze1], c=cPC, lw=2)
+    ax3[1].plot((t/1000)[zs2:ze2], np.mean(rE, axis=1)[zs2:ze2], c=cPC, lw=2)
+    ax3[0].plot((t/1000)[zs1:ze1], sine2[zs1:ze1]/4+1, c='k', lw=2, ls='--')
+    ax3[1].plot((t/1000)[zs2:ze2], sine2[zs2:ze2]/4+1, c='k', lw=2, ls='--')
+    ax3[0].axis('off')
+    ax3[1].axis('off')
+    ax3[1].set(ylim=[0.6, 1.4])
 
     # saving (optional)
     if save:
-        fig.savefig('../results/figs/cosyne-collection/exp2-2_switch_sine_reduced.png', dpi=300)
-        fig2.savefig('../results/figs/cosyne-collection/exp2-2_switch_sine_reduced_PCcorr.png', dpi=300)
+        sinestr = '_sine' if sine else ''
+        fig.savefig(f'../results/figs/cosyne-collection/exp2-2_switch{sinestr}.png', dpi=300)
+        fig2.savefig(f'../results/figs/cosyne-collection/exp2-2_switch{sinestr}_PCcorr.png', dpi=300)
+        fig3.savefig(f'../results/figs/cosyne-collection/exp2-2_switch{sinestr}_zoom.png', dpi=300)
         plt.close(fig)
         plt.close(fig2)
+        plt.close(fig3)
+
 
 
 def ex203_signaltransmission_pathways_NDNF(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, reduced=False, save=False):
@@ -262,22 +296,29 @@ def ex203_signaltransmission_pathways_SOM(noise=0.0, w_hetero=False, mean_pop=Tr
     ax[0].set(xlabel='time (ms)', ylabel='PC rate')
 
 
-def quantify_signals(signals, rate):
+def quantify_signals(signals, rate, bias=False):
     """ Quantify the signal using the regressors beta of a linear regression of the signals onto the rate."""
 
     X = np.array(signals).reshape((len(signals), -1)).T
     y = rate
-    return np.linalg.inv(X.T@X)@(X.T@y)
-
+    if bias:
+        X = np.concatenate((np.ones((len(rate), 1)), X), axis=1)
+        return (np.linalg.inv(X.T@X)@(X.T@y))[1:]
+    else:
+        return np.linalg.inv(X.T@X)@(X.T@y)
 
 
 if __name__ in "__main__":
 
 
-    # ex202_mutual_inhibition_switch(mean_pop=True, noise=0, w_hetero=False, wNS=1.2, reduced=False, save=False)
+    # ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, reduced=False, stimup=0.6, stimdown=-0.5,
+                                #    save=True)
 
-    # ex203_signaltransmission_pathways_NDNF(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True)
+    ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, reduced=False, stimup=0.6, stimdown=-0.5,
+                                   save=True, sine=True)
 
-    ex203_signaltransmission_pathways_SOM(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True)
+    # ex203_signaltransmission_pathways_NDNF(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True, save=False)
+
+    # ex203_signaltransmission_pathways_SOM(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True)
 
     plt.show()
