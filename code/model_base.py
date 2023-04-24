@@ -145,7 +145,7 @@ class NetworkModel:
         return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
     def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.0, dt=1,
-            monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True):
+            monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True, scale_w_by_p=True):
         """
         Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
         'other' things, such as currents or 'bouton activities'.
@@ -174,12 +174,13 @@ class NetworkModel:
         if self.flag_pre_inh:
             p0 = self.g_func(rN0)
             # scale weights by release probability
-            self.Ws['NS'] = self.Ws['NS']/p0*self.weights_scaled_by
-            self.Ws['DS'] = self.Ws['DS']/p0*self.weights_scaled_by
-            if self.flag_p_on_DN:
-                self.Ws['DN'] = self.Ws['DN']/p0*self.weights_scaled_by
-            self.weights_scaled_by = p0  # we're saving this so we don't scale weights again upon next run
-                                         # if the function is called again with the same p0, weights remain the same
+            if scale_w_by_p:
+                self.Ws['NS'] = self.Ws['NS']/p0*self.weights_scaled_by
+                self.Ws['DS'] = self.Ws['DS']/p0*self.weights_scaled_by
+                if self.flag_p_on_DN:
+                    self.Ws['DN'] = self.Ws['DN']/p0*self.weights_scaled_by
+                self.weights_scaled_by = p0  # we're saving this so we don't scale weights again upon next run
+                                            # if the function is called again with the same p0, weights remain the same
         else:
             p0 = 1
 
