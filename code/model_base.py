@@ -192,7 +192,7 @@ class NetworkModel:
                 self.Xbg['N'] = 0
                 rN0 = 0
             if self.flag_with_VIP:
-                self.Xbg['V'] = rV0 - self.w_mean['VE'] * rE0 + self.w_mean['VS'] * rS0 
+                self.Xbg['V'] = rV0 - self.w_mean['VE'] * rE0 + self.w_mean['VS'] * rS0 + self.w_mean['VN'] * rN0
             else:
                 self.Xbg['V'] = 0
                 rV0 = 0
@@ -271,7 +271,7 @@ class NetworkModel:
             curr_rN = -p[ti]*self.Ws['NS'] @ rS[ti] - self.Ws['NN'] @ rN[ti] + self.Xbg['N'] + xFF['N'][ti] + xiN
             curr_rP = self.Ws['PE'] @ rE[ti] - self.Ws['PS'] @ rS[ti] - self.Ws['PN'] @ rN[ti] - self.Ws['PP'] @ rP[ti] \
                       - self.Ws['PV'] @ rV[ti] + self.Xbg['P'] + xFF['P'][ti] + xiP
-            curr_rV = -self.Ws['VS']@rS[ti] + self.Ws['VE']@rE[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
+            curr_rV = -self.Ws['VS']@rS[ti] -self.Ws['VN']@rN[ti] + self.Ws['VE']@rE[ti] + self.Xbg['V'] + xFF['V'][ti] + xiV
 
             # Euler integration (pre rectification)  # ToDo: -rE or -vE+
             vE = vE + (-vE + curr_rE) / self.taus['E'] * dt
@@ -326,9 +326,9 @@ def get_default_params(flag_mean_pop=False):
     if flag_mean_pop:
         N_cells = dict(E=1, D=1, S=1, N=1, P=1, V=1)
     # w_mean = dict(NS=0.5, DS=0.5, DN=0.4, SE=0.8, NN=0.3, PS=0, PN=0, PP=0, PE=0, EP=0, DE=0)  # no PVs
-    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5, PV=0, VE=1)
+    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5, PV=0, VE=1, VN=0)
     conn_prob = dict(NS=0.9, DS=0.55, DN=0.5, SE=0.35, NN=0.5, PS=0.6, PN=0.3, PP=0.5, PE=0.7, EP=0.6, DE=0.1,
-                     VS=0.5, SV=0.5, PV=0.5, VE=0.1)
+                     VS=0.5, SV=0.5, PV=0.5, VE=0.1, VN=0.1)
     bg_inputs = dict(E=0.5, D=2, N=2, S=0.5, P=1.5, V=1.3)
     taus = dict(S=20, N=40, E=10, P=10, D=20, V=15)
 
