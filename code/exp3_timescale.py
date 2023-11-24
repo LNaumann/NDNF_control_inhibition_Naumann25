@@ -5,7 +5,7 @@ Experiments 3: Slow inhibition by NDNF interneurons preferentially transmits cer
 
 import numpy as np
 import matplotlib.pyplot as plt
-plt.style.use('poster')
+plt.style.use('pretty')
 import matplotlib as mpl
 lw = mpl.rcParams['lines.linewidth']
 import seaborn as sns
@@ -53,7 +53,7 @@ def exp301_frequency_preference(noise=0.0, w_hetero=False, mean_pop=True, pre_in
 
     amp = 1.5
     dpi = 300 if save else DPI
-    fig, ax = plt.subplots(1, 1, dpi=dpi, figsize=(4.5, 4.2), gridspec_kw={'left': 0.2, 'bottom': 0.2, 'hspace':0.2, 'right':0.95})
+    fig, ax = plt.subplots(1, 1, dpi=dpi, figsize=(1.8, 1.15), gridspec_kw={'left': 0.25, 'bottom': 0.33, 'hspace':0.2, 'right':0.95})
     cols_s = sns.color_palette(f"light:{cSOM}", n_colors=len(betas)+1)[1:]
     cols_n = sns.color_palette(f"light:{cNDNF}", n_colors=len(betas)+1)[1:]
 
@@ -105,14 +105,14 @@ def exp301_frequency_preference(noise=0.0, w_hetero=False, mean_pop=True, pre_in
         ax.plot(freqs, amplitudes_s/amplitudes_s.max(), '.-', c=cols_s[j], ms=4*lw, label=f"b={bb:1.1f}")
         ax.plot(freqs, amplitudes_n/amplitudes_n.max(), '.-', c=cols_n[j], ms=4*lw, label=f"b={bb:1.1f}")
 
-    ax.set(ylim=[0, 1.1], ylabel='signal ampl. (norm)', xlabel='stim. freq. (Hz)', yticks=[0, 0.5, 1])
-    ax.legend(['NDNF', 'SOM'], title='stimulus to', loc='best')
+    ax.set(ylim=[0, 1.1], ylabel='signal (norm)', xlabel='stimulus freq. (Hz)', yticks=[0, 1], xticks=[0, 5, 10, 15])
+    # ax.legend(['NDNF', 'SOM'], title='stimulus to', loc='best')
     # ax.set(ylim=[0, 1.1], xlabel='stim. freq. (Hz)', title='stim to NDNF')
     # ax[0].legend(loc='best', fontsize=7, frameon=False, handlelength=2)
     # ax[1].legend(loc='best', fontsize=7, frameon=False, handlelength=2)
 
     if save:
-        fig.savefig('../results/figs/cosyne-collection/exp3-1_freq-pref_full.png', dpi=300)
+        fig.savefig('../results/figs/Naumann23_draft1/exp3-1_freq-pref.pdf', dpi=300)
         plt.close(fig)
 
 
@@ -142,50 +142,170 @@ def exp302_transient_signals(reduced=False, mean_pop=True, w_hetero=False, pre_i
     amplitudes_n = np.zeros(len(stim_durs))
     amplitudes_s = np.zeros(len(stim_durs))
 
-    dpi = 300 if save else 150
-    fig, ax = plt.subplots(2, 1, figsize=(5, 6.3), gridspec_kw=dict(right=0.95, top=0.95, bottom=0.2, left=0.27),
-                             sharex=True)
+    dpi = 300 if save else 300
+    fig, ax = plt.subplots(2, 2, figsize=(2.75, 2.1), gridspec_kw=dict(right=0.97, top=0.95, bottom=0.27, left=0.2, wspace=0.15, hspace=0.15),
+                             sharex=True, sharey=True, dpi=dpi)
     cols = sns.color_palette("flare", n_colors=len(stim_durs))
 
-    for j, wDN in enumerate([0.4, 0.8]):
+    for k, pre_inh in enumerate([True, False]):
 
-        # change wDN parameter
-        w_mean['DN'] = wDN
-        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh)
+        print(f"pre inh = {pre_inh}")
 
-        for i, sdur in enumerate(stim_durs):
+        for j, wDN in enumerate([0.4, 0.8]):
 
-            xff_null = np.zeros(nt)
-            xff_stim = xff_null.copy()
-            xff_stim[ts:ts+sdur] = amp
-            
-            # simulate with sine input to SOM
-            xFF = get_null_ff_input_arrays(nt, N_cells)
-            xFF['S'] = np.tile(xff_stim, [N_cells['S'], 1]).T
-            xFF['N'] = np.tile(xff_null, [N_cells['N'], 1]).T
-            t, rE1, rD1, rS1, rN1, rP1, rV1, p1, cGABA1, other1 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise)
+            # change wDN parameter
+            w_mean['DN'] = wDN
+            model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh)
 
-            # simulate with sine input to NDNF
-            xFF = get_null_ff_input_arrays(nt, N_cells)
-            xFF['S'] = np.tile(xff_null, [N_cells['S'], 1]).T
-            xFF['N'] = np.tile(xff_stim, [N_cells['N'], 1]).T
-            t, rE2, rD2, rS2, rN2, rP2, rV2, p2, cGABA2, other2 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise)
+            for i, sdur in enumerate(stim_durs):
 
-            bl1 = np.mean(rE1[500:ts])
-            bl2 = np.mean(rE2[500:ts])
-            amplitudes_s[i] = (np.mean(rE1[ts:ts+sdur]-bl1))
-            amplitudes_n[i] = (np.mean(rE2[ts:ts+sdur]-bl2))
+                xff_null = np.zeros(nt)
+                xff_stim = xff_null.copy()
+                xff_stim[ts:ts+sdur] = amp
+                
+                # simulate with sine input to SOM
+                xFF = get_null_ff_input_arrays(nt, N_cells)
+                xFF['S'] = np.tile(xff_stim, [N_cells['S'], 1]).T
+                xFF['N'] = np.tile(xff_null, [N_cells['N'], 1]).T
+                t, rE1, rD1, rS1, rN1, rP1, rV1, p1, cGABA1, other1 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise)
 
-        ax[j].plot(np.arange(len(stim_durs)), amplitudes_n, '.-', c=cNDNF, label='NDNF', lw=lw, ms=4*lw)
-        ax[j].plot(np.arange(len(stim_durs)), amplitudes_s, '.-', c=cSOM, label='SOM', lw=lw, ms=4*lw)
-        ax[j].hlines(0, 0, len(stim_durs)-1, ls=':', color='k', zorder=-1)
-        ax[j].set(xticks=np.arange(len(stim_durs)), ylabel=r'$\Delta$ PC act.',
-                ylim=[-0.55, 0.25], yticks=[0, -0.5])
-    ax[1].set(xlabel='stimulus duration (ms)')
-    ax[1].set_xticklabels(stim_durs, rotation=45, ha='right', rotation_mode="anchor")
+                # simulate with sine input to NDNF
+                xFF = get_null_ff_input_arrays(nt, N_cells)
+                xFF['S'] = np.tile(xff_null, [N_cells['S'], 1]).T
+                xFF['N'] = np.tile(xff_stim, [N_cells['N'], 1]).T
+                t, rE2, rD2, rS2, rN2, rP2, rV2, p2, cGABA2, other2 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise)
+
+                bl1 = np.mean(rE1[500:ts])
+                bl2 = np.mean(rE2[500:ts])
+                amplitudes_s[i] = (np.mean(rE1[ts:ts+sdur]-bl1))
+                amplitudes_n[i] = (np.mean(rE2[ts:ts+sdur]-bl2))
+
+            ax[j, k].plot(np.arange(len(stim_durs)), amplitudes_n, '.-', c=cNDNF, label='NDNF', lw=lw, ms=4*lw)
+            ax[j, k].plot(np.arange(len(stim_durs)), amplitudes_s, '.-', c=cSOM, label='SOM', lw=lw, ms=4*lw)
+            ax[j, k].hlines(0, 0, len(stim_durs)-1, ls='--', color='k', zorder=-1, lw=1)
+            ax[j, k].set(xticks=np.arange(len(stim_durs)), ylim=[-0.55, 0.55], yticks=[0.5, 0, -0.5])
+            ax[j, 0].set(ylabel=r'$\Delta$ PC act.')
+        ax[1, k].set(xlabel='stim. dur. (ms)')
+        ax[1, k].set_xticklabels(stim_durs, rotation=45, ha='right', rotation_mode="anchor")
 
     if save:
-        fig.savefig('../results/figs/cosyne-collection/exp3-2_transient-input.png', dpi=300)
+        fig.savefig('../results/figs/Naumann23_draft1/exp3-2_transient-input.pdf', dpi=300)
+        plt.close(fig)
+
+
+def exp302a_transient_signals_ex(reduced=False, mean_pop=True, w_hetero=False, pre_inh=True, save=False, noise=0, wDN=0.4):
+    """
+    Experiment2: Study transmission of transient signal by NDNF and SOM.
+    """
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    if reduced: # remove recurrence from model for reduced variant 
+        w_mean['EP'], w_mean['PE'], w_mean['SE'] = 0, 0, 0
+
+    # increase NDNF-dendrite inhibition
+    w_mean['DN'] = wDN
+
+    # simulation paramters
+    dur = 4000
+    dt = 1
+    nt = int(dur/dt)
+
+    stim_durs = (np.array([100, 1000])*dt).astype(int)
+    ts = int(1000*dt)
+    amp = 1.5
+
+    amplitudes_n = np.zeros(len(stim_durs))
+    amplitudes_s = np.zeros(len(stim_durs))
+
+    dpi = 300 if save else 300
+    fig, ax = plt.subplots(3, 1, figsize=(1.5, 1.5), gridspec_kw=dict(right=0.97, top=0.95, bottom=0.3, left=0.25, wspace=0.15, hspace=0.15, height_ratios=[1, 1, 1]),
+                             sharex=True, sharey=False, dpi=dpi)
+    fig2, ax2 = plt.subplots(1, 1, dpi=300, figsize=(1.75, 0.9), sharex=True, sharey=True, gridspec_kw=dict(left=0.25, right=0.97))
+    cols = sns.color_palette("flare", n_colors=len(stim_durs))
+
+    model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh)
+
+    alphas = [1, 1]
+
+    for i, sdur in enumerate(stim_durs):
+
+        xff_null = np.zeros(nt)
+        xff_stim = xff_null.copy()
+        xff_stim[ts:ts+sdur] = amp
+        
+        # simulate with input to SOM
+        xFF = get_null_ff_input_arrays(nt, N_cells)
+        xFF['S'] = np.tile(xff_stim, [N_cells['S'], 1]).T
+        xFF['N'] = np.tile(xff_null, [N_cells['N'], 1]).T
+        t, rE1, rD1, rS1, rN1, rP1, rV1, p1, cGABA1, other1 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise, monitor_dend_inh=True)
+
+        # simulate with input to NDNF
+        xFF = get_null_ff_input_arrays(nt, N_cells)
+        xFF['S'] = np.tile(xff_null, [N_cells['S'], 1]).T
+        xFF['N'] = np.tile(xff_stim, [N_cells['N'], 1]).T
+        t, rE2, rD2, rS2, rN2, rP2, rV2, p2, cGABA2, other2 = model.run(dur, xFF, dt=dt, p0=0.5, calc_bg_input=True, noise=noise, monitor_dend_inh=True)
+
+        bl2 = np.mean(rE2[500:ts])
+        amplitude = (np.mean(rE2[ts:ts+sdur]-bl2))
+        print(f"stim dur = {sdur}, amplitude = {amplitude:1.3f}")
+
+        # ax[0].plot(t/1000, xFF['N'][:, 0], c='k', lw=1, alpha=alphas[i])
+        ax[0].plot(t/1000, np.mean(rN2, axis=1), c=cNDNF, lw=1, alpha=alphas[i])
+        ax[0].plot(t/1000, np.mean(rS2, axis=1), c=cSOM, lw=1, alpha=alphas[i])
+        ax[0].plot(t/1000, np.mean(rP2, axis=1), c=cPV, lw=1, alpha=alphas[i])
+        # ax[2].plot(t/1000, np.mean(rD2, axis=1), c='k', lw=1, alpha=alphas[i])
+        # ax[2].plot(t/1000, p2, c=cpi, lw=1, alpha=alphas[i])
+        mean_inh_NDNF = np.mean(np.array(other2['dend_inh_NDNF']), axis=1)
+        mean_inh_SOM = np.mean(np.array(other2['dend_inh_SOM']), axis=1)
+        mean_inh_PV = np.mean(np.array(other2['soma_inh_PV']), axis=1)
+        ax[1].plot(t/1000, mean_inh_NDNF-np.mean(mean_inh_NDNF[:ts]), c=cNDNF, lw=1, alpha=alphas[i], ls='--')
+        ax[1].plot(t/1000, mean_inh_SOM-np.mean(mean_inh_SOM[:ts]), c=cSOM, lw=1, alpha=alphas[i], ls='--')
+        ax[1].plot(t/1000, mean_inh_PV-np.mean(mean_inh_PV[:ts]), c=cPV, lw=1, alpha=alphas[i], ls='--')
+        ax[-1].plot(t/1000, np.mean(rE2, axis=1)-np.mean(rE2[:ts]), c=cPC, lw=1, alpha=alphas[i])
+
+        # bl1 = np.mean(rE1[500:ts])
+        # bl2 = np.mean(rE2[500:ts])
+        # amplitudes_s[i] = (np.mean(rE1[ts:ts+sdur]-bl1))
+        # amplitudes_n[i] = (np.mean(rE2[ts:ts+sdur]-bl2))
+
+    # ax[j, k].plot(np.arange(len(stim_durs)), amplitudes_n, '.-', c=cNDNF, label='NDNF', lw=lw, ms=4*lw)
+    # ax[j, k].plot(np.arange(len(stim_durs)), amplitudes_s, '.-', c=cSOM, label='SOM', lw=lw, ms=4*lw)
+    # ax[j, k].hlines(0, 0, len(stim_durs)-1, ls='--', color='k', zorder=-1, lw=1)
+    # ax[j, k].set(xticks=np.arange(len(stim_durs)), ylim=[-0.55, 0.55], yticks=[0.5, 0, -0.5])
+    # ax[j, 0].set(ylabel=r'$\Delta$ PC act.')
+
+        ax[-1].set(xlabel='time (s)', ylim=[-0.35, 0.35], yticks=[-0.2, 0, 0.2], ylabel=r'$\Delta$ PC act.')
+        # ax[1, k].set_xticklabels(stim_durs, rotation=45, ha='right', rotation_mode="anchor")
+
+
+        # plot change in dendritic and somatic inhibition
+
+        for j in [1]:
+            dend_inh_SOM = np.array(eval(f"other{j+1}['dend_inh_SOM']")).mean(axis=1)
+            dend_inh_NDNF = np.array(eval(f"other{j+1}['dend_inh_NDNF']")).mean(axis=1)
+            soma_inh_PV = np.array(eval(f"other{j+1}['soma_inh_PV']")).mean(axis=1)
+
+            ddi_SOM = np.mean(dend_inh_SOM[ts:ts+sdur])-np.mean(dend_inh_SOM[:ts])
+            ddi_NDNF = np.mean(dend_inh_NDNF[ts:ts+sdur])-np.mean(dend_inh_NDNF[:ts])
+            dsi_PV = np.mean(soma_inh_PV[ts:ts+sdur])-np.mean(soma_inh_PV[:ts])
+            ax2.bar(i*1.5-0.3, ddi_NDNF, facecolor='none', edgecolor=cNDNF, hatch='/////', width=0.2, label='NDNF' if i==0 else None)
+            ax2.bar(i*1.5-0.1, ddi_SOM, facecolor='none', edgecolor=cSOM, hatch='/////', width=0.2, label='SOM' if i==0 else None)
+            ax2.bar(i*1.5+0.1, dsi_PV, facecolor='none', edgecolor=cPV, hatch='/////', width=0.2, label='PV' if i==0 else None)
+            ax2.bar(i*1.5+0.3, ddi_SOM+ddi_NDNF+dsi_PV, facecolor='none', edgecolor='silver', hatch='/////', width=0.2)
+            ax2.hlines(0, -0.5, 2, color='k', lw=1)
+
+            ax2.set(ylabel=r'$\Delta$ inh.', xticks=[], ylim=[-0.6, 1.1])
+            ax2.spines['bottom'].set_visible(False)
+
+
+            # ax2.bar(i+0.2, ddi_SOM+ddi_NDNF, facecolor='none', edgecolor='silver', hatch='/////', width=0.2, label='sum' if i==0 else None)
+
+    if save:
+        wDN_str = str(wDN).replace('.', 'p')
+        # fig.savefig('../results/figs/Naumann23_draft1/exp3-2_transient-input.pdf', dpi=300)
+        fig2.savefig(f"../results/figs/Naumann23_draft1/exp3-3_transient-input_inh-change_{wDN_str}.pdf", dpi=300)
         plt.close(fig)
 
 
@@ -210,7 +330,7 @@ def exp304_transient_effects(mean_pop=True, w_hetero=False, pre_inh=True, noise=
         w_mean['EP'], w_mean['PE'], w_mean['SE'] = 0, 0, 0
 
     # increase NDNF-dendrite inhibition
-    w_mean['DS'] = 0.8
+    w_mean['DS'] = 0.8 # so SOM-dend inhibition dominates over SOM-NDNF-dend disinhibition
 
     # instantiate model
     model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
@@ -240,7 +360,7 @@ def exp304_transient_effects(mean_pop=True, w_hetero=False, pre_inh=True, noise=
     print(f"second signal: {quantify_signals([xsine], np.mean(rE[ts2+sh:te2+sh], axis=1), bias=True)[0]:1.3f}")
 
     # plot
-    dpi = 300 if save else 150
+    dpi = 300 if save else 120
     fig, ax = plt.subplots(5, 1, dpi=dpi, gridspec_kw=dict(hspace=0.4, wspace=0.5, right=0.95, top=0.95, bottom=0.13, left=0.2),
                                  figsize=(6, 6.22))
     # cols = sns.color_palette("flare", n_colors=len(stim_durs))
@@ -308,9 +428,14 @@ def signal_amplitude(x, tstart=500):
 
 if __name__ in "__main__":
 
-    # exp301_frequency_preference(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1)
+    # exp301_frequency_preference(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False)
     # make_sine(1000, 4, plot=True)
-    # exp302_transient_signals(reduced=False, pre_inh=True, save=True, mean_pop=False, w_hetero=True, noise=0.1)
-    exp304_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=True)
+
+    # exp302_transient_signals(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1)
+    exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.4)
+    exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.8)
+
+
+    # exp304_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=False)
 
     plt.show()
