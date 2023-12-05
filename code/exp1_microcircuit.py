@@ -80,7 +80,7 @@ def exp101_paired_recordings_invitro(dur=1000, dt=1, w_hetero=False, mean_pop=Tr
         ax[0, i].plot(t[1:], -np.mean(other['curr_rN'], axis=1), c=cNDNF, lw=2)
         ax[1, i].set(xlabel='time (ms)', ylim=[-0.1, 3])
         mean_act = np.mean(other['curr_rE'], axis=1)
-        ax2.plot(t[1:]/1000, -mean_act, c=cPC, alpha=(i+1)/2, label=f'{labelz[i]} inh.', lw=1)
+        ax2.plot(t[1:]/1000, -mean_act, c=eval('c'+labelz[i]), label=f'{labelz[i]} inh.', lw=1)
 
 
     # ax[0, 0].set(ylim=[-1, 1], ylabel='curr. (au)')
@@ -192,7 +192,12 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
     # get default parameters
     N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
 
+    # TODO: remove
+    # w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
+    # w_mean.update(dict(DN=0.4))
     # w_mean['NS'] = 1.5
+
+    # mb.plot_w_mean(w_mean)
 
     # array for varying NDNF input
     ndnf_input = np.arange(-1, 1, 0.05)
@@ -203,6 +208,7 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
     rN_inh_record = np.zeros(ninput)
     rS_record = np.zeros((ninput, N_cells['S']))
     rN_record = np.zeros((ninput, N_cells['N']))
+    # rV_record = np.zeros((ninput, N_cells['V'])) # TODO: remove
     cGABA_record = np.zeros(ninput)
     p_record = np.zeros(ninput)
 
@@ -223,6 +229,7 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
         # save stuff
         rS_record[i] = rS[-1]
         rN_record[i] = rN[-1]
+        # rV_record[i] = rV[-1] #TODO: remove
         rS_inh_record[i] = np.mean(np.array(other['dend_inh_SOM'][-1]))
         rN_inh_record[i] = np.mean(np.array(other['dend_inh_NDNF'][-1]))
         cGABA_record[i] = np.mean(cGABA[-1])
@@ -240,6 +247,7 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
     rNmu, rNstd = np.mean(rN_record, axis=1), np.std(rN_record, axis=1)
     ax[0].plot(ndnf_input, rSmu, color=cSOM, lw=lw)
     ax[0].plot(ndnf_input, rNmu, color=cNDNF, lw=lw)
+    # ax[0].plot(ndnf_input, np.mean(rV_record, axis=1), color=cVIP, lw=lw)  # TODO:remove
     ax[0].legend(['SOM', 'NDNF'], frameon=False, handlelength=1, loc=(0.05, 0.6), fontsize=8)
     # ax[1].fill_between(ndnf_input, rSmu-rSstd, rSmu+rSstd, color=cSOM, alpha=0.5)
     # ax[1].fill_between(ndnf_input, rNmu-rNstd, rNmu+rNstd, color=cNDNF, alpha=0.5)
@@ -248,14 +256,15 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
     ax[1].set(ylabel='dend. inh. (au)', ylim=[-0.05, 1.1], yticks=[0, 1], xlabel=r'$\Delta$ NDNF input')
     ax[0].set(ylabel='activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5],
               yticks=[0, 1, 2])
-    
-    fig2, ax2 = plt.subplots(2, 1, figsize=(2.1, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
-                                                                           'right': 0.95,
-                                                                           'height_ratios': [1, 1]}, sharex=True)
-    ax2[0].plot(ndnf_input, cGABA_record, c=cpi)
-    ax2[1].plot(ndnf_input, p_record, c=cpi)
-    ax2[0].set(ylabel='GABA conc. (au)')
-    ax2[1].set(ylabel='release p', xlabel='input to NDNF (au)')
+
+    # TODO: remove
+    # fig2, ax2 = plt.subplots(2, 1, figsize=(2.1, 2.8), dpi=dpi, gridspec_kw={'left': 0.25, 'bottom': 0.15, 'top': 0.95,
+    #                                                                        'right': 0.95,
+    #                                                                        'height_ratios': [1, 1]}, sharex=True)
+    # ax2[0].plot(ndnf_input, cGABA_record, c=cpi)
+    # ax2[1].plot(ndnf_input, p_record, c=cpi)
+    # ax2[0].set(ylabel='GABA conc. (au)')
+    # ax2[1].set(ylabel='release p', xlabel='input to NDNF (au)')
 
     # saving
     if save:
@@ -264,7 +273,7 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
             savename = savename.replace('.pdf', '_no-preinh.pdf')
         fig.savefig(savename, dpi=300)
         # fig2.savefig('../results/figs/cosyne-collection/exp1-3_layer-specificity_GABA', dpi=300)
-        [plt.close(ff) for ff in [fig, fig2]]
+        plt.close(fig)
 
 
 def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
@@ -287,7 +296,10 @@ def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=
 
     # array for varying NDNF input
     ndnf_input = np.arange(-1, 1.05, 0.1)
-    weightsDN = np.arange(0, 1.05, 0.1)
+    weightsDN = np.arange(0, 0.9, 0.2)
+
+    # TODO: remove
+    # w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
 
     # empty arrays for recording stuff
     rS_inh_record = np.zeros((len(ndnf_input), len(weightsDN)))
@@ -297,8 +309,8 @@ def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=
     dpi = 300 if save else DPI
     fig, ax = plt.subplots(1, 1, figsize=(1.6, 1.5), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
                                                                            'right': 0.95}, sharex=True)
-    fig2, ax2 = plt.subplots(1, 1, figsize=(1.6, 1.5), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
-                                                                           'right': 0.95}, sharex=True)
+    # fig2, ax2 = plt.subplots(1, 1, figsize=(1.6, 1.5), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
+                                                                        #    'right': 0.95}, sharex=True)
     cols = sns.color_palette(f"blend:{cSOM},{cNDNF}", n_colors=len(weightsDN))
 
     for j, wDN in enumerate(weightsDN):
@@ -307,7 +319,8 @@ def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=
         print(f"NDNF/SOM dendritic inh: {w_mean['DN']/w_mean['DS']:1.2f}")
 
         # instantiate and run model
-        bg_inputs = {'E': 0.5, 'D': 1.9, 'N': 1.9, 'S': 0.2, 'P': 1.4, 'V': 0}
+        # bg_inputs = {'E': 0.5, 'D': 1.9, 'N': 1.9, 'S': 0.7, 'P': 1.7, 'V': 1.5}
+        bg_inputs = {'E': 0.5, 'D': 1.7, 'N': 1.9, 'S': 0.6, 'P': 1.4, 'V': 1.4}
         model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
                                 flag_pre_inh=pre_inh)
         
@@ -333,7 +346,8 @@ def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=
     ax.set(xlabel=r'$\Delta$ NDNF input', xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[0, 2], yticks=[0, 1, 2], ylabel=r'$\Sigma$ dend. inh.')
     # ax.legend(loc=(1.01, 0.2), frameon=False, handlelength=1, title='N/S -> D')
 
-    ax2.pcolormesh(ndnf_input, weightsDN, (rS_inh_record+rN_inh_record).T, cmap='coolwarm_r', vmin=0, vmax=2)
+    #TODO: remove
+    # ax2.pcolormesh(ndnf_input, weightsDN, (rS_inh_record+rN_inh_record).T, cmap='coolwarm_r', vmin=0, vmax=2)
 
     # saving
     if save:
@@ -416,7 +430,7 @@ def exp103c_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean_po
 
 def exp104_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
-    Experiment4: 
+    Experiment4a: Measure inhibition from SOM to PC with active and inactive NDNF (i.e. with and without pre inh).
 
     Parameters
     - dur: length of experiment
@@ -437,7 +451,6 @@ def exp104_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=
     
     # get default parameters
     N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
 
     # labels
     labelz = ['SOM', 'NDNF']
@@ -500,7 +513,7 @@ def exp104_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=
 
 def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
-    Experiment4: 
+    Experiment4: Experiment4a: Measure inhibition from SOM to NDNF with active and inactive NDNF (i.e. with and without pre inh).
 
     Parameters
     - dur: length of experiment
@@ -521,7 +534,6 @@ def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_in
     
     # get default parameters
     N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
 
     # labels
     labelz = ['SOM', 'NDNF']
@@ -574,6 +586,7 @@ def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_in
     ax2[2].plot(t/1000, np.mean(rS2, axis=1), c=cSOM, lw=1)
     ax2[3].plot(t/1000, np.mean(rN2, axis=1), c=cNDNF, lw=1)
     ax2[4].plot(t/1000, np.mean(rP2, axis=1), c=cPV, lw=1)
+    ax2[4].plot(t/1000, np.mean(rV2, axis=1), c=cVIP, lw=1)
     ax2[5].plot(t/1000, p2, c=cpi, lw=1)
 
     if save:
@@ -584,20 +597,24 @@ def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_in
 
 if __name__ in "__main__":
 
+    # Fig 2 (new): A & B. IPSCs from SOM to PC and NDNF with / without spillover
+    # exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=True)
+    # exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=True)
 
-    # exp101_paired_recordings_invitro(mean_pop=False, w_hetero=True, noise=0.1, save=True)
-
-    # exp102_preinh_bouton_imaging(save=True)
-
+    # Fig 3: Layer-specificity of NDNF control (with & without pre inh)
+    # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=True)
     # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False, save=True)
 
-    # exp103b_total_dendritic_inhibition(pre_inh=False, save=False, w_hetero=True, mean_pop=False, noise=0.1)
+    # Fig 3: total dendritic inhibiion
+    exp103b_total_dendritic_inhibition(pre_inh=True, save=True, w_hetero=True, mean_pop=False, noise=0.1)
+    exp103b_total_dendritic_inhibition(pre_inh=False, save=True, w_hetero=True, mean_pop=False, noise=0.1)
 
+    # Fig 5B: timescale of inhibition (SOM vs NDNF) 
+    # (also plots old panel from Fig 1, TODO: remove)
+    # exp101_paired_recordings_invitro(mean_pop=False, w_hetero=True, noise=0.1, save=True)
+
+    # old stuff:
     # exp103c_amplifcation_ndnf_inhibition(save=True, w_hetero=True, mean_pop=False, noise=0.1)
-
-    # exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=True)
-
-    exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=True)
-
+    # exp102_preinh_bouton_imaging(save=True)
 
     plt.show()

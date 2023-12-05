@@ -21,8 +21,8 @@ class NetworkModel:
     """
 
     def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
-                 tauG=200, gamma=1,
-                 flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=False, flag_p_on_DN=False,
+                 tauG=200, gamma=1, w_std_rel=0.1,
+                 flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=True, flag_p_on_DN=False,
                  flag_with_NDNF=True, flag_with_PV=True):
 
         # todo: move wED parameter somewhere else
@@ -38,9 +38,7 @@ class NetworkModel:
         self.flag_with_PV = flag_with_PV
 
         # Create weight matrices
-        if flag_w_hetero:
-            w_std_rel = 0.1
-        else:
+        if not flag_w_hetero:
             w_std_rel = 0
 
         if not flag_with_VIP:
@@ -145,7 +143,7 @@ class NetworkModel:
         return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
     def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.0, dt=1,
-            monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True, scale_w_by_p=True):
+            monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True, scale_w_by_p=True, p_scale=None):
         """
         Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
         'other' things, such as currents or 'bouton activities'.
@@ -171,8 +169,10 @@ class NetworkModel:
         t = np.arange(0, dur, dt)
         nt = len(t)
 
+        p_init = p0
+
         if self.flag_pre_inh:
-            p0 = self.g_func(rN0)
+            p0 = p_scale if p_scale else self.g_func(rN0)
             # scale weights by release probability
             if scale_w_by_p:
                 self.Ws['NS'] = self.Ws['NS']/p0*self.weights_scaled_by
@@ -220,7 +220,7 @@ class NetworkModel:
 
         # set initial rates/values
         rE[0] = np.random.normal(rE0, rE0*init_noise, size=self.N_cells['E'])
-        rD[0] = np.random.normal(rD0, rD0 * init_noise, size=self.N_cells['D'])
+        rD[0] = np.random.normal(rD0, rD0*init_noise, size=self.N_cells['D'])
         rS[0] = np.random.normal(rS0, rS0*init_noise, size=self.N_cells['S'])
         rN[0] = np.random.normal(rN0, rN0*init_noise, size=self.N_cells['N'])
         rP[0] = np.random.normal(rP0, rP0*init_noise, size=self.N_cells['P'])
@@ -229,7 +229,7 @@ class NetworkModel:
         # variables for other shenanigans
         aS = np.zeros(self.N_cells['S'])
         p = np.ones(nt)
-        p[0] = p0 if self.flag_pre_inh else 1
+        p[0] = p_init if p_init else p0
         cGABA = np.zeros((nt, self.N_cells['N']))
         cGABA[0] = rN0
 
@@ -240,6 +240,7 @@ class NetworkModel:
         if monitor_dend_inh:
             other['dend_inh_SOM'] = [p[0]*self.Ws['DS']@rS[0]]
             other['dend_inh_NDNF'] = [self.Ws['DN']@rN[0]]  # todo: include flag for pi on wDN
+            other['soma_inh_PV'] = [self.Ws['EP']@rP[0]]
         if monitor_currents:
             other['curr_rS'] = []
             other['curr_rN'] = []
@@ -305,6 +306,7 @@ class NetworkModel:
             if monitor_dend_inh:
                 other['dend_inh_SOM'].append(p[ti]*self.Ws['DS']@rS[ti])
                 other['dend_inh_NDNF'].append(pDN*self.Ws['DN']@cGABA[ti])
+                other['soma_inh_PV'].append(self.Ws['EP']@rP[ti])
 
             if monitor_currents:
                 other['curr_rS'].append(curr_rS)
@@ -326,13 +328,34 @@ def get_default_params(flag_mean_pop=False):
     if flag_mean_pop:
         N_cells = dict(E=1, D=1, S=1, N=1, P=1, V=1)
     # w_mean = dict(NS=0.5, DS=0.5, DN=0.4, SE=0.8, NN=0.3, PS=0, PN=0, PP=0, PE=0, EP=0, DE=0)  # no PVs
-    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5, PV=0, VE=1, VN=0)
+    w_mean = dict(NS=0.7, DS=0.5, DN=0.4, SE=0.8, NN=0.2, PS=0.8, PN=0.5, PP=0.1, PE=1, EP=0.5, DE=0, VS=0.5, SV=0.5, PV=0.3, VE=0.3, VN=0.3)
+
+    # updated parameters with VIPs (status Dec 4th 2023)
+    w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
+
     conn_prob = dict(NS=0.9, DS=0.55, DN=0.5, SE=0.35, NN=0.5, PS=0.6, PN=0.3, PP=0.5, PE=0.7, EP=0.6, DE=0.1,
-                     VS=0.5, SV=0.5, PV=0.5, VE=0.1, VN=0.1)
+                     VS=0.5, SV=0.5, PV=0.5, VE=0.1, VN=0.3)
     bg_inputs = dict(E=0.5, D=2, N=2, S=0.5, P=1.5, V=1.3)
     taus = dict(S=20, N=40, E=10, P=10, D=20, V=15)
 
     return N_cells, w_mean, conn_prob, bg_inputs, taus
+
+
+def plot_w_mean(w_mean, ED=1):
+
+    types = ['E', 'D', 'S', 'N', 'P', 'V']
+    wmat = np.zeros((len(types), len(types)))
+    for i, istr in enumerate(types):
+        for j, jstr in enumerate(types):
+            if istr+jstr in w_mean:
+                wmat[i, j] = w_mean[istr+jstr]
+    wmat[0, 1] = ED
+    wmat[:, 2:] *= -1
+    
+    fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+    ax.imshow(wmat, cmap='RdBu_r', vmin=-1, vmax=1)
+    ax.set(xticks=range(len(types)), xticklabels=types, yticks=range(len(types)), yticklabels=types)
+    # plt.show()
 
 
 if __name__ in "__main__":
@@ -348,8 +371,8 @@ if __name__ in "__main__":
 
     # w_mean['NS'] = 0  # block SOM->NDNF inhibition
 
-    w_mean['DN'] = 0.4  # increase NDNF->dendrite inhibition
-    w_mean['PN'] = 0
+    # w_mean['DN'] = 0.4  # increase NDNF->dendrite inhibition
+    # w_mean['PN'] = 0
 
     # instantiate model
     model = NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_SOM_ad=False, flag_w_hetero=w_hetero,
@@ -371,15 +394,15 @@ if __name__ in "__main__":
                     V=np.zeros((nt, model.N_cells['P'])))
 
     # B2: stimulate NDNF
-    ts, te = 1000, 2000
+    ts, te = 1000, 1500
     stim_strength = 1
     xFF = xFF_null.copy()
     xFF['N'][ts:te] = stim_strength
-    xFF['D'][ts:te] = stim_strength
+    # xFF['D'][ts:te] = stim_strength
 
-    xFF['S'][1000:1200,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
+    # xFF['S'][1000:1200,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
 
-    xFF['S'][1700:1900,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
+    # xFF['S'][1700:1900,0] = np.sign(np.sin(np.arange(0, 0.2, 0.001)*10*np.pi*2))*1.5
 
     # C: sensory stimulation
     # tau1 = 150
@@ -397,16 +420,17 @@ if __name__ in "__main__":
                                                     monitor_currents=True, calc_bg_input=True)
 
     # plotting
-    fig, ax = plt.subplots(7, 1, figsize=(4, 5), dpi=150, sharex=True)
+    fig, ax = plt.subplots(8, 1, figsize=(4, 5), dpi=150, sharex=True, gridspec_kw={'top': 0.95})
     ax[0].plot(t, rE, c='C3', alpha=0.5)
     ax[1].plot(t, rD, c='k', alpha=0.5)
     ax[2].plot(t, rS, c='C0', alpha=0.5)
     ax[3].plot(t, rN, c='C1', alpha=0.5)
-    ax[4].plot(t, rP, c='darkblue', alpha=0.5)
-    ax[5].plot(t, cGABA, c='C2', alpha=1)
-    ax[6].plot(t, p, c='C2', alpha=1)
+    ax[4].plot(t, rV, c='mediumpurple', alpha=0.5)
+    ax[5].plot(t, rP, c='darkblue', alpha=0.5)
+    ax[6].plot(t, cGABA, c='C2', alpha=1)
+    ax[7].plot(t, p, c='C2', alpha=1)
 
-    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV', 'GABA']):
+    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'VIP', 'PV', 'GABA']):
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[-1].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
 

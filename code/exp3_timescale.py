@@ -36,11 +36,13 @@ def exp301_frequency_preference(noise=0.0, w_hetero=False, mean_pop=True, pre_in
 
     # w_mean['DS'] = 1
     # w_mean['DN'] = 1
+    # TODO: remove
+    # w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
 
     # instantiate model
     model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
                             flag_pre_inh=pre_inh)
-
+    
     # simulation paramters
     dur = 5000
     dt = 1
@@ -130,6 +132,10 @@ def exp302_transient_signals(reduced=False, mean_pop=True, w_hetero=False, pre_i
     # increase NDNF-dendrite inhibition
     wDNs = [w_mean['DN'], 0.8]      
 
+    # TODO: remove
+    # w_mean.update(dict(SV=0.5, PV=0.2, PN=0.3, VN=0.2))
+    # w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
+
     # simulation paramters
     dur = 5000
     dt = 1
@@ -207,6 +213,10 @@ def exp302a_transient_signals_ex(reduced=False, mean_pop=True, w_hetero=False, p
     # increase NDNF-dendrite inhibition
     w_mean['DN'] = wDN
 
+    # TODO: remove
+    # w_mean.update(dict(SV=0.5, PV=0.2, PN=0.3, VN=0.2))
+    # w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
+
     # simulation paramters
     dur = 4000
     dt = 1
@@ -222,7 +232,7 @@ def exp302a_transient_signals_ex(reduced=False, mean_pop=True, w_hetero=False, p
     dpi = 300 if save else 300
     fig, ax = plt.subplots(3, 1, figsize=(1.5, 1.5), gridspec_kw=dict(right=0.97, top=0.95, bottom=0.3, left=0.25, wspace=0.15, hspace=0.15, height_ratios=[1, 1, 1]),
                              sharex=True, sharey=False, dpi=dpi)
-    fig2, ax2 = plt.subplots(1, 1, dpi=300, figsize=(1.75, 0.9), sharex=True, sharey=True, gridspec_kw=dict(left=0.25, right=0.97))
+    fig2, ax2 = plt.subplots(1, 1, dpi=300, figsize=(1.5, 0.9), sharex=True, sharey=True, gridspec_kw=dict(left=0.25, right=0.97))
     cols = sns.color_palette("flare", n_colors=len(stim_durs))
 
     model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh)
@@ -282,22 +292,21 @@ def exp302a_transient_signals_ex(reduced=False, mean_pop=True, w_hetero=False, p
 
         # plot change in dendritic and somatic inhibition
 
-        for j in [1]:
-            dend_inh_SOM = np.array(eval(f"other{j+1}['dend_inh_SOM']")).mean(axis=1)
-            dend_inh_NDNF = np.array(eval(f"other{j+1}['dend_inh_NDNF']")).mean(axis=1)
-            soma_inh_PV = np.array(eval(f"other{j+1}['soma_inh_PV']")).mean(axis=1)
+        dend_inh_SOM = np.array(other2['dend_inh_SOM']).mean(axis=1)
+        dend_inh_NDNF = np.array(other2['dend_inh_NDNF']).mean(axis=1)
+        soma_inh_PV = np.array(other2['soma_inh_PV']).mean(axis=1)
 
-            ddi_SOM = np.mean(dend_inh_SOM[ts:ts+sdur])-np.mean(dend_inh_SOM[:ts])
-            ddi_NDNF = np.mean(dend_inh_NDNF[ts:ts+sdur])-np.mean(dend_inh_NDNF[:ts])
-            dsi_PV = np.mean(soma_inh_PV[ts:ts+sdur])-np.mean(soma_inh_PV[:ts])
-            ax2.bar(i*1.5-0.3, ddi_NDNF, facecolor='none', edgecolor=cNDNF, hatch='/////', width=0.2, label='NDNF' if i==0 else None)
-            ax2.bar(i*1.5-0.1, ddi_SOM, facecolor='none', edgecolor=cSOM, hatch='/////', width=0.2, label='SOM' if i==0 else None)
-            ax2.bar(i*1.5+0.1, dsi_PV, facecolor='none', edgecolor=cPV, hatch='/////', width=0.2, label='PV' if i==0 else None)
-            ax2.bar(i*1.5+0.3, ddi_SOM+ddi_NDNF+dsi_PV, facecolor='none', edgecolor='silver', hatch='/////', width=0.2)
-            ax2.hlines(0, -0.5, 2, color='k', lw=1)
+        ddi_SOM = np.mean(dend_inh_SOM[ts:ts+sdur])-np.mean(dend_inh_SOM[:ts])
+        ddi_NDNF = np.mean(dend_inh_NDNF[ts:ts+sdur])-np.mean(dend_inh_NDNF[:ts])
+        dsi_PV = np.mean(soma_inh_PV[ts:ts+sdur])-np.mean(soma_inh_PV[:ts])
+        ax2.bar(i*1.3-0.3, ddi_NDNF, facecolor='none', edgecolor=cNDNF, hatch='/////', width=0.2, label='NDNF' if i==0 else None)
+        ax2.bar(i*1.3-0.1, ddi_SOM, facecolor='none', edgecolor=cSOM, hatch='/////', width=0.2, label='SOM' if i==0 else None)
+        ax2.bar(i*1.3+0.1, dsi_PV, facecolor='none', edgecolor=cPV, hatch='/////', width=0.2, label='PV' if i==0 else None)
+        ax2.bar(i*1.3+0.3, ddi_SOM+ddi_NDNF+dsi_PV, facecolor='none', edgecolor='silver', hatch='/////', width=0.2)
+        ax2.hlines(0, -0.5, 1.8, color='k', lw=1)
 
-            ax2.set(ylabel=r'$\Delta$ inh.', xticks=[], ylim=[-0.6, 1.1])
-            ax2.spines['bottom'].set_visible(False)
+        ax2.set(ylabel=r'$\Delta$ inh.', xticks=[], ylim=[-0.6, 1.1])
+        ax2.spines['bottom'].set_visible(False)
 
 
             # ax2.bar(i+0.2, ddi_SOM+ddi_NDNF, facecolor='none', edgecolor='silver', hatch='/////', width=0.2, label='sum' if i==0 else None)
@@ -306,7 +315,7 @@ def exp302a_transient_signals_ex(reduced=False, mean_pop=True, w_hetero=False, p
         wDN_str = str(wDN).replace('.', 'p')
         # fig.savefig('../results/figs/Naumann23_draft1/exp3-2_transient-input.pdf', dpi=300)
         fig2.savefig(f"../results/figs/Naumann23_draft1/exp3-3_transient-input_inh-change_{wDN_str}.pdf", dpi=300)
-        plt.close(fig)
+        plt.close(fig2)
 
 
 def exp303_cancelling_input_TD_BU():
@@ -428,14 +437,16 @@ def signal_amplitude(x, tstart=500):
 
 if __name__ in "__main__":
 
+    # Fig 5 C: frequency preference
     # exp301_frequency_preference(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False)
-    # make_sine(1000, 4, plot=True)
 
+    # Fig 5 D&E: responses of PC to SOM/NDNF stimulation depend on parameters and stimulus duration
     # exp302_transient_signals(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1)
     exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.4)
     exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.8)
 
-
+    # old stuff
     # exp304_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=False)
+    # make_sine(1000, 4, plot=True)
 
     plt.show()
