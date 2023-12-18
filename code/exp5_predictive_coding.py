@@ -30,7 +30,7 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=False)
 
     # set parameters to get negative prediction errors
-    w_mean_update = dict(EP=2, DE=0., DS=1, PE=1.2, PP=0.4, PS=0.3, PV=0.15, SE=1, SV=0.5, VE=1, VS=1)
+    w_mean_update = dict(EP=2, DE=0.2, DS=1, PE=1.2, PP=0.4, PS=0.3, PV=0.15, SE=1, SV=0.5, VE=1, VS=1)
 
     if NDNF_get_P:
         # parameters for prediction error neurons when NDNFs get P
@@ -69,6 +69,8 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     # construct sensory and prediction input
     amp = 1
     sensory, prediction = get_s_and_p_inputs(amp, dur_stim, buffer, nt)
+
+    # sensory += 2
 
     # set input of cells
     xFF = get_null_ff_input_arrays(nt, N_cells)
@@ -158,7 +160,7 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
 
     # plot feedback, mismatch and playback response for different levels of NDNF activation
 
-    ndnf_act_levels = np.arange(0, 1.4, 0.2)
+    ndnf_act_levels = np.arange(0, 1.6, 0.2)
     fb_response = np.zeros(len(ndnf_act_levels))
     mm_response = np.zeros(len(ndnf_act_levels))
     pb_response = np.zeros(len(ndnf_act_levels))
@@ -176,17 +178,14 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     ax2.plot(ndnf_act_levels, mm_response, c=cpred, lw=1, ls='-', marker='.', label='mismatch')
     ax2.plot(ndnf_act_levels, pb_response, c=csens, lw=1, ls='-', marker='.', label='playback')
     ax2.plot(ndnf_act_levels, fb_response, c='k', ls='-', marker='.', lw=1, label='feedback')
-    ax2.set(xlabel='NDNF activation', ylabel=r'$\Delta$ PC act.', ylim=[-0.05, 0.6], yticks=[0, 0.5], xticks=[0, 1])
+    ax2.set(xlabel='NDNF activation', ylabel=r'$\Delta$ PC act.', ylim=[-0.05, 0.7], yticks=[0, 0.5], xticks=[0, 1])
     # ax.pcolormesh(np.array([fb_response, mm_response, pb_response]))
 
 
     if save:
         fig.savefig(f"../results/figs/Naumann23_draft1/exp5-3_prediction-error_inh_exc.pdf", dpi=300)
         fig2.savefig(f"../results/figs/Naumann23_draft1/exp5-4_prediction-error_varyNDNF.pdf", dpi=300)
-
-
-
-
+        [plt.close([ff]) for ff in [fig, fig2]]
 
 
 
@@ -349,6 +348,7 @@ def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, buff
 
     if save:
         fig.savefig(f"../results/figs/Naumann23_draft1/exp5-1_prediction-error_{save_name}.pdf", dpi=300)
+        plt.close(fig)
 
 
 
@@ -392,16 +392,11 @@ def plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, du
         ax[2].set(ylabel=r'$\Delta$ inh.', xticks=[0, 1, 2], ylim=[-4, 4.5], yticks=[-3, 0, 3], xticklabels=['P=S', 'P>S', 'P<S'])
 
         
+if __name__ in "__main__":
 
-# exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_inh=True, noise=0.0, save=False, with_NDNF=True, xFF_NDNF=0, rNinit=0, calc_bg_input=True)
-# exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_inh=True, noise=0.0, save=False, with_NDNF=True, xFF_NDNF=2.8, rNinit=3.72, calc_bg_input=True)
-exp501_predictive_coding(mean_pop=False, w_hetero=True, reduced=False, pre_inh=True, noise=0.1, with_NDNF=True, xFF_NDNF=0, rNinit=4, calc_bg_input=True,
-                         scale_w_by_p=True, save=True, b=0.15)
-# exp501_predictive_coding(mean_pop=False, w_hetero=True, reduced=False, pre_inh=True, noise=0.1, save=False, with_NDNF=True, xFF_NDNF=1., rNinit=6, calc_bg_input=False,
-                        #  scale_w_by_p=True, p_scale=0.4, b=0.15)
-# exp501_predictive_coding(mean_pop=False, w_hetero=True, reduced=False, pre_inh=True, noise=0.3, save=False, with_NDNF=True, xFF_NDNF=-6, rNinit=0, calc_bg_input=False,
-                        #  scale_w_by_p=True, p_scale=0.4, b=0.15)
+    exp501_predictive_coding(mean_pop=False, w_hetero=True, reduced=False, pre_inh=True, noise=0.1, with_NDNF=True, xFF_NDNF=0, rNinit=4, calc_bg_input=True,
+                            scale_w_by_p=True, save=True, b=0.15)
 
-plt.show()
+    plt.show()
 
 

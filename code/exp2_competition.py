@@ -128,14 +128,16 @@ def ex202_mutual_inhibition_switch(noise=0.0, wNS=1.4, w_hetero=False, mean_pop=
         betas_dend = np.zeros((nt//wbin, 2))
         for ti in range(nt//wbin):
             tts, tte = ti*wbin, (ti+1)*wbin
-            betas[ti] = quantify_signals([sine1_shift[tts:tte], sine2_shift[tts:tte]], rEmu[tts:tte])
+            # betas[ti] = quantify_signals([sine1_shift[tts:tte], sine2_shift[tts:tte]], rEmu[tts:tte])  # TODO: remove?
+            betas[ti] = np.corrcoef(sine2_shift[tts:tte], rEmu[tts:tte])[0, :]  # use correlation instead of regression
             betas_dend[ti] = quantify_signals([sine1_shift[tts:tte], sine2_shift[tts:tte]], rDmu[tts:tte])
         ax4.plot((np.arange(0, nt, wbin)+wbin/2)/1000, betas[:, 1], '.-', c='k', ms=lw*3, lw=lw)
         ax4.hlines(0, 0, 10, color='silver', ls=':', lw=1, zorder=-1)
         # plot box between t_act_s and t_act_e
-        ax4.fill_between([t_act_s/1000, t_act_e/1000], -0.2, 0.2, facecolor=cNDNF, alpha=0.2, zorder=-1)
-        ax4.fill_between([t_inact_s/1000, t_inact_e/1000], -0.2, 0.2, facecolor=cNDNF, alpha=0.2, zorder=-1)
-        ax4.set(xlabel='time (s)', ylabel='corr.', ylim=[-0.2, 0.2], yticks=[-0.2, 0, 0.2])
+        ylow, yhigh = -1.2, 1.2
+        ax4.fill_between([t_act_s/1000, t_act_e/1000], ylow, yhigh, facecolor=cNDNF, alpha=0.2, zorder=-1)
+        ax4.fill_between([t_inact_s/1000, t_inact_e/1000], ylow, yhigh, facecolor=cNDNF, alpha=0.2, zorder=-1)
+        ax4.set(xlabel='time (s)', ylabel='corr.', ylim=[ylow, yhigh], yticks=[-1, 0, 1])
 
     [ax2[ii].set(ylim=[0, 2]) for ii in range(3)]
     ax2[1].set(ylabel='dend.')
@@ -407,22 +409,23 @@ def quantify_signals(signals, rate, bias=False):
 
 if __name__ in "__main__":
 
+    SAVE = True
     
     #B&C: parameter sweep for quantification of switch regime
-    ex202b_bistability(mean_pop=False, noise=0.1, w_hetero=True, reduced=False, save=True, pre_inh=True)
+    ex202b_bistability(mean_pop=False, noise=0.1, w_hetero=True, reduced=SAVE, save=SAVE, pre_inh=True)
 
     # Fig 4: Switch between NDNF and SOM inhibition
     # E: pulse input example (not bistable)
     ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=0.7, reduced=False, stimup=0.6, stimdown=-0.5,
-                                   save=True)
+                                   save=SAVE)
     
     # D: pulse input example (bistable)
     ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, reduced=False, stimup=0.6, stimdown=-0.5,
-                                   save=True)
+                                   save=SAVE)
 
     # F&G: switch with time-varying input to SOM
     ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, reduced=False, stimup=0.6, stimdown=-0.5,
-                                   save=True, sine=True, pre_inh=True)
+                                   save=SAVE, sine=True, pre_inh=True)
 
     # old stuff
     # ex203_signaltransmission_pathways_NDNF(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True, save=False)

@@ -333,6 +333,9 @@ def get_default_params(flag_mean_pop=False):
     # updated parameters with VIPs (status Dec 4th 2023)
     w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
 
+    # add excitatory recurrence (status Dec 18th 2023)
+    w_mean.update(dict(DE=0.2))
+
     conn_prob = dict(NS=0.9, DS=0.55, DN=0.5, SE=0.35, NN=0.5, PS=0.6, PN=0.3, PP=0.5, PE=0.7, EP=0.6, DE=0.1,
                      VS=0.5, SV=0.5, PV=0.5, VE=0.1, VN=0.3)
     bg_inputs = dict(E=0.5, D=2, N=2, S=0.5, P=1.5, V=1.3)

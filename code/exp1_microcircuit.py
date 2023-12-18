@@ -597,24 +597,27 @@ def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_in
 
 if __name__ in "__main__":
 
+    SAVE = True
+
     # Fig 2 (new): A & B. IPSCs from SOM to PC and NDNF with / without spillover
-    # exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=True)
-    # exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=True)
+    exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
     # Fig 3: Layer-specificity of NDNF control (with & without pre inh)
-    # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=True)
-    # exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False, save=True)
+    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=SAVE)
+    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False, save=SAVE)
 
     # Fig 3: total dendritic inhibiion
-    exp103b_total_dendritic_inhibition(pre_inh=True, save=True, w_hetero=True, mean_pop=False, noise=0.1)
-    exp103b_total_dendritic_inhibition(pre_inh=False, save=True, w_hetero=True, mean_pop=False, noise=0.1)
+    exp103b_total_dendritic_inhibition(pre_inh=True, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
+    exp103b_total_dendritic_inhibition(pre_inh=False, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
 
     # Fig 5B: timescale of inhibition (SOM vs NDNF) 
     # (also plots old panel from Fig 1, TODO: remove)
-    # exp101_paired_recordings_invitro(mean_pop=False, w_hetero=True, noise=0.1, save=True)
+    exp101_paired_recordings_invitro(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
     # old stuff:
     # exp103c_amplifcation_ndnf_inhibition(save=True, w_hetero=True, mean_pop=False, noise=0.1)
     # exp102_preinh_bouton_imaging(save=True)
 
     plt.show()
+ 

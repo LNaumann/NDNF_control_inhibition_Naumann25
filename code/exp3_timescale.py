@@ -437,13 +437,15 @@ def signal_amplitude(x, tstart=500):
 
 if __name__ in "__main__":
 
+    SAVE = True
+
     # Fig 5 C: frequency preference
-    # exp301_frequency_preference(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False)
+    exp301_frequency_preference(reduced=False, save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False)
 
     # Fig 5 D&E: responses of PC to SOM/NDNF stimulation depend on parameters and stimulus duration
-    # exp302_transient_signals(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1)
-    exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.4)
-    exp302a_transient_signals_ex(reduced=False, save=True, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.8)
+    exp302_transient_signals(reduced=False, save=SAVE, mean_pop=False, w_hetero=True, noise=0.1)
+    exp302a_transient_signals_ex(reduced=False, save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.4)
+    exp302a_transient_signals_ex(reduced=False, save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.8)
 
     # old stuff
     # exp304_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=False)
