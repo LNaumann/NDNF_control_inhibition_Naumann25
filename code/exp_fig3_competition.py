@@ -19,162 +19,8 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 
 DPI = 300
 
-def exp101_paired_recordings_invitro(dur=1000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
-    """
-    Experiment1: paired "in vitro" recordings and plot.
-    - stimulate NDNF and SOM, record from PC, SOM and NDNF
-    - "in vitro" means all cells have 0 baseline activity
-    - paired recordings means the ingoing currents to each cell
 
-    Parameters
-    - dur: length of experiment
-    - dt: time step
-    - ...
-    """
-    # TODO: complete list of parameters
-
-    # simulation paramters
-    nt = int(dur / dt)
-    t = np.arange(0, dur, dt)
-    t0 = 100
-    amp = 3
-
-    # create figure
-    dpi = 300 if save else DPI
-    fig, ax = plt.subplots(2, 2, figsize=(2, 1.5), dpi=dpi, sharex=True, sharey='row',
-                           gridspec_kw={'right': 0.93, 'bottom': 0.24, 'left': 0.22, 'top': 0.95, 'wspace': 0.3})
-    
-    fig2, ax2 = plt.subplots(1, 1, figsize=(1.8, 1.15), dpi=dpi, sharex=True, sharey='row',
-                           gridspec_kw={'right': 0.95, 'bottom': 0.33, 'left': 0.25})
-
-    # get default parameters
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
-    # increase NDNF->dendrite inhibition so the effect is comparable to SOM->dendrite (visually in timescale plot)
-    # w_mean['DN'] = 1.  # not necessary?
-
-    # labels
-    labelz = ['SOM', 'NDNF']
-
-    # stimulate SOM and NDNF, respectively
-    for i, cell in enumerate(['S', 'N']):
-
-        # array of FF input
-        xFF = get_null_ff_input_arrays(nt, N_cells)
-        xFF[cell][:, :] = amp * np.tile(np.exp(-(t - t0) / 50) * np.heaviside(t - t0, 1), (N_cells[cell], 1)).T
-        # xFF[cell][50:150, :] = 2
-
-        # create model and run
-        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                                flag_pre_inh=pre_inh, gamma=1)
-        t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, noise=noise, 
-                                                               rE0=0, rD0=1, rN0=0, rS0=0, rP0=0, monitor_currents=True)
-        print('bg inputs:', model.Xbg)
-        # note: dendritic activity is set to 1 so that the inhibition by SOM and NDNF shows in the soma
-
-        # plotting and labels
-        # ax[0, i].plot(t[1:], other['curr_rE'], c=cPC, alpha=0.1)
-        # ax[1, i].plot(t[1:], other['curr_rS'], c=cSOM, alpha=0.1)
-        # ax[2, i].plot(t[1:], other['curr_rN'], c=cNDNF, alpha=0.1)
-        ax[1, i].plot(t[1:], -np.mean(other['curr_rS'], axis=1), c=cSOM, lw=2)
-        ax[0, i].plot(t[1:], -np.mean(other['curr_rN'], axis=1), c=cNDNF, lw=2)
-        ax[1, i].set(xlabel='time (ms)', ylim=[-0.1, 3])
-        mean_act = np.mean(other['curr_rE'], axis=1)
-        ax2.plot(t[1:]/1000, -mean_act, c=eval('c'+labelz[i]), label=f'{labelz[i]} inh.', lw=1)
-
-
-    # ax[0, 0].set(ylim=[-1, 1], ylabel='curr. (au)')
-    ax[0, 0].set(ylim=[-3, 3], ylabel='curr. (au)', yticks=[-2, 0, 2], xlim=[0, 500])
-    ax[1, 0].set(ylim=[-3, 3], ylabel='curr. (au)', yticks=[-2, 0, 2], xlim=[0, 500])
-    # ax2[0].set(ylim=[-0.8, 0.1])
-    ax2.legend(loc=(0.35, 0.56), handlelength=1, frameon=False, fontsize=8)
-    ax2.set(xlabel='time (s)', ylim=[-0.05, 0.8], xticks=[0, 1], ylabel='PC curr. (au)')
-
-    if save:
-        fig.savefig('../results/figs/Naumann23_draft1/exp1-1_paired-recordings1.pdf', dpi=300)
-        fig2.savefig('../results/figs/Naumann23_draft1/exp1-1_timescales.pdf', dpi=300)
-        plt.close(fig)
-
-
-def exp102_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, w_hetero=True, mean_pop=False, pre_inh=True, noise=0.2, save=False):
-    """
-    Experiment2: Image SOM bouton in response to stimulation of NDNF interneurons.
-
-    Parameters
-    - dur: duration of experiment (ms)
-    - ts: start of NDNF stimulation
-    - te: end of NDNF stimulation
-    - dt: integration time step (ms)
-    - stim_NDNF: strength of NDNF stimulation
-    - noise: level of white noise added to neural activity
-    - flag_w_hetero: whether to add heterogeneity to weight matrices
-    - mean_pop: if true, simulate only one neuron (mean) per population
-    """
-
-    # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
-    # instantiate model
-    model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                           flag_pre_inh=pre_inh)
-
-    # simulation paramters
-    nt = int(dur/dt)
-
-    # generate inputs
-    xFF = get_null_ff_input_arrays(nt, N_cells)
-    xFF['N'][ts:te] = stim_NDNF
-
-    # run model
-    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
-                                                           monitor_currents=True)
-    # TODO: add init_noise as parameter to the function?
-
-    # plotting
-    # --------
-    # 3 different plots here: an overview plot, bouton imaging + quantification and only bouton imaging
-
-    # plot 1: response of all neurons to NDNF stimulation
-    dpi = 300 if save else DPI
-    fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=dpi, sharex=True)
-    ax[4].plot(t, rE, c=cPC, alpha=0.5)
-    ax[3].plot(t, rD, c='k', alpha=0.5)
-    ax[1].plot(t, rS, c=cSOM, alpha=0.5)
-    ax[0].plot(t, rN, c=cNDNF, alpha=0.5)
-    ax[2].plot(t, rP, c=cPV, alpha=0.5)
-    ax[5].plot(t, p, c=cpi, alpha=1)
-    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
-        ax[i].set(ylabel=label, ylim=[0, 3])
-    ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (s)')
-
-    # plot 2: monitoring SOM boutons
-    fig2, ax2 = plt.subplots(1, 1, figsize=(2.2, 1.6), dpi=dpi, gridspec_kw={'left':0.22, 'right':0.9, 'bottom':0.23})
-    boutons = np.array(other['boutons_SOM'])
-    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
-    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0) #, vmax=0.15)
-    cb = plt.colorbar(cm, ticks=[0, 0.5])
-    cb.set_label('act. (au)', rotation=0, labelpad=-30, y=1.15)
-    # cb.ax.get_yaxis().labelpad = 15
-    ax2.set(xlabel='time (ms)', ylabel='# bouton (SOM out)', yticks=[0, (len(boutons_nonzero.T)//50)*50],
-            xticks=[0, 1000, 2000], xticklabels=[0, 1, 2])
-
-    # plot 3: quantification of monitoring SOM boutons
-    fig3, ax3 = plt.subplots(1, 1, figsize=(2.5, 2), dpi=dpi, gridspec_kw={'left': 0.25, 'right':0.9, 'bottom':0.2})
-    boutons_NDNFact = np.mean(boutons_nonzero[ts:te+200], axis=0)
-    boutons_cntrl = np.mean(boutons_nonzero[0:ts], axis=0)
-    plot_violin(ax3, 0, boutons_cntrl, color=cSOM)
-    plot_violin(ax3, 1, boutons_NDNFact, color='#E9B86F')
-    ax3.set(xlim=[-0.5, 1.5], xticks=[0, 1], xticklabels=['ctrl', 'NDNF act.'], ylim=[0, 0.6], yticks=[0, 0.5],
-            ylabel='SOM bouton act.')
-    
-    if save:
-        # fig.savefig('../results/figs/cosyne-collection/exp1-2_preinh-allneurons.png', dpi=300)
-        fig2.savefig('../results/figs/Naumann23_draft1/exp1-2_preinh-boutons-all.pdf', dpi=300)
-        # fig3.savefig('../results/figs/cosyne-collection/exp1-2_preinh-boutons-violin.png', dpi=300)
-        [plt.close(ff) for ff in [fig, fig2, fig3]]
-
-
-def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+def exp_fig3top_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
     """
     Experiment3: Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
 
@@ -276,7 +122,7 @@ def exp103_layer_specificity(dur=1500, dt=1, w_hetero=False, mean_pop=True, nois
         plt.close(fig)
 
 
-def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+def exp_fig3bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
     """
     Experiment3b: Vary input to NDNF interneurons and NDNF->dendrite weight, check how this affects total dendritic inhibition.
 
@@ -358,7 +204,85 @@ def exp103b_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=
         plt.close(fig) 
 
 
-def exp103c_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
+def exp_unused_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, w_hetero=True, mean_pop=False, pre_inh=True, noise=0.2, save=False):
+    """
+    Experiment2: Image SOM bouton in response to stimulation of NDNF interneurons.
+
+    Parameters
+    - dur: duration of experiment (ms)
+    - ts: start of NDNF stimulation
+    - te: end of NDNF stimulation
+    - dt: integration time step (ms)
+    - stim_NDNF: strength of NDNF stimulation
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - mean_pop: if true, simulate only one neuron (mean) per population
+    """
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # instantiate model
+    model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                           flag_pre_inh=pre_inh)
+
+    # simulation paramters
+    nt = int(dur/dt)
+
+    # generate inputs
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+    xFF['N'][ts:te] = stim_NDNF
+
+    # run model
+    t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, init_noise=0.1, noise=noise, dt=dt, monitor_boutons=True,
+                                                           monitor_currents=True)
+    # TODO: add init_noise as parameter to the function?
+
+    # plotting
+    # --------
+    # 3 different plots here: an overview plot, bouton imaging + quantification and only bouton imaging
+
+    # plot 1: response of all neurons to NDNF stimulation
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(6, 1, figsize=(4, 5), dpi=dpi, sharex=True)
+    ax[4].plot(t, rE, c=cPC, alpha=0.5)
+    ax[3].plot(t, rD, c='k', alpha=0.5)
+    ax[1].plot(t, rS, c=cSOM, alpha=0.5)
+    ax[0].plot(t, rN, c=cNDNF, alpha=0.5)
+    ax[2].plot(t, rP, c=cPV, alpha=0.5)
+    ax[5].plot(t, p, c=cpi, alpha=1)
+    for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'PV']):
+        ax[i].set(ylabel=label, ylim=[0, 3])
+    ax[5].set(ylabel='p', ylim=[0, 1], xlabel='time (s)')
+
+    # plot 2: monitoring SOM boutons
+    fig2, ax2 = plt.subplots(1, 1, figsize=(2.2, 1.6), dpi=dpi, gridspec_kw={'left':0.22, 'right':0.9, 'bottom':0.23})
+    boutons = np.array(other['boutons_SOM'])
+    boutons_nonzero = boutons[:, np.mean(boutons, axis=0) > 0]
+    cm = ax2.pcolormesh(boutons_nonzero.T, cmap='Blues', vmin=0) #, vmax=0.15)
+    cb = plt.colorbar(cm, ticks=[0, 0.5])
+    cb.set_label('act. (au)', rotation=0, labelpad=-30, y=1.15)
+    # cb.ax.get_yaxis().labelpad = 15
+    ax2.set(xlabel='time (ms)', ylabel='# bouton (SOM out)', yticks=[0, (len(boutons_nonzero.T)//50)*50],
+            xticks=[0, 1000, 2000], xticklabels=[0, 1, 2])
+
+    # plot 3: quantification of monitoring SOM boutons
+    fig3, ax3 = plt.subplots(1, 1, figsize=(2.5, 2), dpi=dpi, gridspec_kw={'left': 0.25, 'right':0.9, 'bottom':0.2})
+    boutons_NDNFact = np.mean(boutons_nonzero[ts:te+200], axis=0)
+    boutons_cntrl = np.mean(boutons_nonzero[0:ts], axis=0)
+    plot_violin(ax3, 0, boutons_cntrl, color=cSOM)
+    plot_violin(ax3, 1, boutons_NDNFact, color='#E9B86F')
+    ax3.set(xlim=[-0.5, 1.5], xticks=[0, 1], xticklabels=['ctrl', 'NDNF act.'], ylim=[0, 0.6], yticks=[0, 0.5],
+            ylabel='SOM bouton act.')
+    
+    if save:
+        # fig.savefig('../results/figs/cosyne-collection/exp1-2_preinh-allneurons.png', dpi=300)
+        fig2.savefig('../results/figs/Naumann23_draft1/exp1-2_preinh-boutons-all.pdf', dpi=300)
+        # fig3.savefig('../results/figs/cosyne-collection/exp1-2_preinh-boutons-violin.png', dpi=300)
+        [plt.close(ff) for ff in [fig, fig2, fig3]]
+
+
+def exp_unused_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, save=False):
     """
     Experiment3b: Vary input to NDNF interneurons and pre inh strength, check how this affects NDNF inhibition to dendrite.
 
@@ -428,7 +352,7 @@ def exp103c_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean_po
         plt.close(fig)
 
 
-def exp104_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
+def exp_unused_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
     Experiment4a: Measure inhibition from SOM to PC with active and inactive NDNF (i.e. with and without pre inh).
 
@@ -511,7 +435,7 @@ def exp104_motifs_SOM_PC(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=
         plt.close(fig2)
 
 
-def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
+def exp_unused_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_inh=True, noise=0, save=False):
     """
     Experiment4: Experiment4a: Measure inhibition from SOM to NDNF with active and inactive NDNF (i.e. with and without pre inh).
 
@@ -599,23 +523,20 @@ if __name__ in "__main__":
 
     SAVE = False
 
-    # Fig 2 (new): A & B. IPSCs from SOM to PC and NDNF with / without spillover
-    exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
-    exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
+    exp_fig3top_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=SAVE)
+    exp_fig3top_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False, save=SAVE)
 
-    # Fig 3: Layer-specificity of NDNF control (with & without pre inh)
-    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, save=SAVE)
-    exp103_layer_specificity(mean_pop=False, w_hetero=True, noise=0.1, pre_inh=False, save=SAVE)
+    # Fig 3 (bottom): total dendritic inhibiion
+    exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
+    exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
 
-    # Fig 3: total dendritic inhibiion
-    exp103b_total_dendritic_inhibition(pre_inh=True, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
-    exp103b_total_dendritic_inhibition(pre_inh=False, save=SAVE, w_hetero=True, mean_pop=False, noise=0.1)
 
-    # Fig 5B: timescale of inhibition (SOM vs NDNF) 
-    # (also plots old panel from Fig 1, TODO: remove)
-    exp101_paired_recordings_invitro(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # --- OLD --- 
+    # # Fig 2 (new): A & B. IPSCs from SOM to PC and NDNF with / without spillover
+    # exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # exp104_motifs_SOM_NDNF(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
-    # old stuff:
     # exp103c_amplifcation_ndnf_inhibition(save=True, w_hetero=True, mean_pop=False, noise=0.1)
     # exp102_preinh_bouton_imaging(save=True)
 
