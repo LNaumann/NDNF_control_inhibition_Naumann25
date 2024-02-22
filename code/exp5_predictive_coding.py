@@ -23,11 +23,30 @@ def slice_dict(dic, ts, te):
     return dic_new
 
 
-def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_inh=False, noise=0.0, save=False, with_NDNF=True, xFF_NDNF=0, rNinit=0, calc_bg_input=False,
-                             b=0.12, scale_w_by_p=False, p_scale=None, NDNF_get_P=False):
+def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_NDNF=True, with_wPN=False, NDNF_get_P=False,
+                             p_scale=None, noise=0.1, xFF_NDNF=0, rNinit=0, b=0.12, save=False):
+    """
+    Experiments to explore predictive coding microcircuit. Plots all panels for the paper (Fig. 6).
+
+    Parameters:
+    -----------
+    - mean_pop:   bool, if True, model mean population activity, if False, model single cell activity 
+    - w_hetero:   bool, if True, model heterogenous weights, else homogeneous weights
+    - pre_inh:    bool, if True, model presynaptic inhibition, else not
+    - with_NDNF:  bool, if True, include NDNF interneurons in the model, else not
+    - with_wPN:   bool, if True, include nonzero NDNF-PV inhibition
+    - NDNF_get_P: bool, if True, NDNFs receive prediction input
+    - p_scale:    bool, if True, scale weights affected by pre. inh. with baseline release factor
+    - noise:      float, noise level in the model (std of added Gaussian white noise)
+    - xFF_NDNF:   float, additional feedforward input to NDNF interneurons
+    - rNinit:     float, initial value of NDNF activity
+    - b:          float (0-1), presynaptic inhibition strength
+    - save:       bool, whether to save figures
+    """
+    
 
     # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=False)
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
 
     # set parameters to get negative prediction errors
     w_mean_update = dict(EP=2, DE=0.2, DS=1, PE=1.2, PP=0.4, PS=0.3, PV=0.15, SE=1, SV=0.5, VE=1, VS=1)
@@ -35,42 +54,38 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     if NDNF_get_P:
         # parameters for prediction error neurons when NDNFs get P
         # ---------------------------------------------------------
-        w_mean_update.update(dict(NS=0.7, DN=0.8, PN=0.1, VN=0.1))
-        # update parameters to get prediction errors with NDNF active
-        # w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.4, PS=0.27))  # parameters with wPN > 0 
-        w_mean_update.update(dict(DN=1, PN=0)) # parameters with wPN = 0
+        w_mean_update.update(dict(NS=0.7, DN=1, PN=0., VN=0.1))
+        if with_wPN:
+            w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.4, PS=0.27))  # parameters with wPN > 0
 
-        # background inputs adapted to default
-        # bg_inputs = {'E': 9, 'D': 4., 'N': 2.8, 'S': 5.0, 'P': 6.2, 'V': 7.0}
+        # background inputs adapted to default (double check these?)
         bg_inputs = {'E': 9, 'D': 8, 'N': 7.6, 'S': 5.0, 'P': 6.2, 'V': 7.4}
 
     else:
         # paremters for prediction error neurons when NDNFs don't get P
         # ------------------------------------------------------------
         w_mean_update.update(dict(NS=0.5, DN=1.5, PN=0., VN=0.1))  # parameters with wPN = 0
-
-        # w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.2, PS=0.25))  # parameters with wPN > 0 
+        if with_wPN:
+            w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.2, PS=0.25))  # parameters with wPN > 0 
 
         # background inputs adapted to default
         bg_inputs = {'E': 9, 'D': 10, 'N': 6.8, 'S': 5.0, 'P': 6.2, 'V': 7.4}
 
-    # update mean weights
+    # update mean weights using weight updates create above
     w_mean.update(w_mean_update)
 
     # simulation parameters
-    dur_stim = 2000
-    buffer = 2000
-    dur = 2*buffer + dur_stim
-    dur_tot = dur*3
-    dt = 1  # ms
-    t = np.arange(0, dur_tot, dt)
-    nt = len(t)
+    dur_stim = 2000  # duration of stimulus per phase (ms)
+    buffer = 2000    # buffer time before and after stimulus (ms)
+    dur = 2*buffer + dur_stim  # duration of one phase (ms)
+    dur_tot = dur*3  # total duration (ms)
+    dt = 1  # integration time step (ms), note: since dt=1ms, time index = time in ms
+    t = np.arange(0, dur_tot, dt)  # time vector
+    nt = len(t)  # number of time steps
 
     # construct sensory and prediction input
-    amp = 1
-    sensory, prediction = get_s_and_p_inputs(amp, dur_stim, buffer, nt)
-
-    # sensory += 2
+    amp_s, amp_p = 1, 1  # amplitude of sensory and prediction input
+    sensory, prediction = get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt)
 
     # set input of cells
     xFF = get_null_ff_input_arrays(nt, N_cells)
@@ -109,7 +124,7 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     print('pscale = ', p_scale if p_scale else model.g_func(rN0))
 
     # run simulation without manipulations
-    t, res_fp, res_op, res_up, bg_inputs_df = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=True)
+    t, res_fp, res_op, res_up, bg_inputs_df = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=True, noise=noise)
     print(bg_inputs_df)
 
     plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory, buffer)
@@ -121,7 +136,8 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     rN0 = 6
     p0 = model.g_func(rN0)
     xFF['N'] = xFF_NDNF_bl + xFF_NDNF
-    t, res_fp_act, res_op_act, res_up_act, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False)
+    t, res_fp_act, res_op_act, res_up_act, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False,
+                                                             noise=noise)
     plot_all_variables_all_phases(t, res_fp_act, res_op_act, res_up_act, prediction, sensory, buffer)
     plot_mismatch_responses(t, res_fp_act, res_op_act, res_up_act, prediction, sensory, buffer, save_name='actNDNF', save=save)
 
@@ -130,7 +146,8 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     rN0 = 2
     p0 = model.g_func(rN0)
     xFF['N'] = xFF_NDNF_bl + xFF_NDNF
-    t, res_fp_inact, res_op_inact, res_up_inact, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False)
+    t, res_fp_inact, res_op_inact, res_up_inact, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False,
+                                                                   noise=noise)
     plot_all_variables_all_phases(t, res_fp_inact, res_op_inact, res_up_inact, prediction, sensory, buffer)
 
     # plot change in inh and exc inputs to PCs
@@ -209,22 +226,23 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, reduced=False, pre_i
     #     # fig5.savefig('../results/figs/Naumann23_draft1/exp5-1_prediction-error.pdf', dpi=300)
 
 
-def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=0.5, dt=1, calc_bg_input=True, scale_w_by_p=True, p_scale=None):
+def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=0.5, dt=1, calc_bg_input=True,
+                  scale_w_by_p=True, p_scale=None, noise=0.1):
 
     # split FF input into three phases
     xFFfp = slice_dict(xFF, 0, dur)
     xFFop = slice_dict(xFF, dur, 2*dur)
     xFFup = slice_dict(xFF, 2*dur, 3*dur)
 
-        # run simulation
+    # run simulation
     t, rEfp, rDfp, rSfp, rNfp, rPfp, rVfp, pfp, cGABAfp, otherfp = model.run(dur, xFFfp, dt=dt, rE0=rE0, rP0=rP0, rS0=rS0, rV0=rV0, rN0=rN0, rD0=rD0, p0=p0,
-                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0,
+                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0, noise=noise,
                                                                             monitor_dend_inh=True, p_scale=p_scale)
     t, rEop, rDop, rSop, rNop, rPop, rVop, pop, cGABAop, otherop = model.run(dur, xFFop, dt=dt, rE0=rE0, rP0=rP0, rS0=rS0, rV0=rV0, rN0=rN0, rD0=rD0, p0=p0,
-                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0,
+                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0, noise=noise,
                                                                             monitor_dend_inh=True, p_scale=p_scale)
     t, rEup, rDup, rSup, rNup, rPup, rVup, pup, cGABAup, otherup = model.run(dur, xFFup, dt=dt, rE0=rE0, rP0=rP0, rS0=rS0, rV0=rV0, rN0=rN0, rD0=rD0, p0=p0,
-                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0,
+                                                                            calc_bg_input=calc_bg_input, scale_w_by_p=scale_w_by_p, init_noise=0, noise=noise,
                                                                             monitor_dend_inh=True, p_scale=p_scale)
     
     res_fp = dict(rE=rEfp, rD=rDfp, rS=rSfp, rN=rNfp, rP=rPfp, rV=rVfp, p=pfp, cGABA=cGABAfp, other=otherfp)
@@ -236,17 +254,34 @@ def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=
     return t/1000, res_fp, res_op, res_up, bg_inputs_calc
 
 
-def get_s_and_p_inputs(amp, dur_stim, buffer, nt):
+def get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt):
+    """
+    Function to construct sensory and prediction input arrays. Input has three phases:
+    - fp (fully predicted = feedback): prediction and sensory input
+    - op (overpredicted = mismatch): only prediction input
+    - up (underpredicted = playback): only sensory input
+    
+    Parameters:
+    - amp_s:    float, amplitude of sensory input
+    - amp_p:    float, amplitude of prediction input
+    - dur_stim: int, duration of stimulus per phase (ms)
+    - buffer:   int, buffer time before and after stimulus (ms)
+    - nt:       int, number of time steps
+
+    Returns:
+    - sensory:    array, sensory input (length nt)
+    - prediction: array, prediction input (length nt)
+    """
 
     fp_s = buffer
     op_s = fp_s+buffer*2+dur_stim
     up_s = op_s+buffer*2+dur_stim
     sensory = np.zeros(nt)
-    sensory[fp_s:fp_s+dur_stim] = amp
-    sensory[up_s:up_s+dur_stim] = amp
+    sensory[fp_s:fp_s+dur_stim] = amp_s
+    sensory[up_s:up_s+dur_stim] = amp_s
     prediction = np.zeros(nt)
-    prediction[fp_s:fp_s+dur_stim] = amp
-    prediction[op_s:op_s+dur_stim] = amp
+    prediction[fp_s:fp_s+dur_stim] = amp_p
+    prediction[op_s:op_s+dur_stim] = amp_p
 
     return sensory, prediction
     
@@ -394,8 +429,8 @@ def plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, du
         
 if __name__ in "__main__":
 
-    exp501_predictive_coding(mean_pop=False, w_hetero=True, reduced=False, pre_inh=True, noise=0.1, with_NDNF=True, xFF_NDNF=0, rNinit=4, calc_bg_input=True,
-                            scale_w_by_p=True, save=True, b=0.15)
+    exp501_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, noise=0.1, with_NDNF=True, xFF_NDNF=0, rNinit=4,
+                            with_wPN=False, b=0.15, save=False)
 
     plt.show()
 

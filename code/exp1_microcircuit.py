@@ -597,7 +597,7 @@ def exp104_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pre_in
 
 if __name__ in "__main__":
 
-    SAVE = True
+    SAVE = False
 
     # Fig 2 (new): A & B. IPSCs from SOM to PC and NDNF with / without spillover
     exp104_motifs_SOM_PC(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)

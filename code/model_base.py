@@ -20,7 +20,7 @@ class NetworkModel:
     - bg_inputs: dictionary of background inputs
     """
 
-    def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=0.7, b=0.5, r0=0, p_low=0, taup=100,
+    def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, b=0.5, r0=0, p_low=0, taup=100,
                  tauG=200, gamma=1, w_std_rel=0.1,
                  flag_w_hetero=False, flag_SOM_ad=False, flag_pre_inh=True, flag_with_VIP=True, flag_p_on_DN=False,
                  flag_with_NDNF=True, flag_with_PV=True):
@@ -142,7 +142,7 @@ class NetworkModel:
         """
         return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
-    def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.0, dt=1,
+    def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.1, dt=1,
             monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True, scale_w_by_p=True, p_scale=None):
         """
         Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
@@ -332,9 +332,6 @@ def get_default_params(flag_mean_pop=False):
 
     # updated parameters with VIPs (status Dec 4th 2023)
     w_mean.update(dict(SV=0.4, PV=0.2, PN=0.3, VN=0.2, DE=0.2))
-
-    # add excitatory recurrence (status Dec 18th 2023)
-    w_mean.update(dict(DE=0.2))
 
     conn_prob = dict(NS=0.9, DS=0.55, DN=0.5, SE=0.35, NN=0.5, PS=0.6, PN=0.3, PP=0.5, PE=0.7, EP=0.6, DE=0.1,
                      VS=0.5, SV=0.5, PV=0.5, VE=0.1, VN=0.3)
