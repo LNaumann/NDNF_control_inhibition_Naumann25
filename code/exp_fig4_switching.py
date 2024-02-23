@@ -20,6 +20,91 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 DPI = 300
 
 
+def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, save=False, target_DN=False):
+    """
+    Check for bistability within the SOM-NDNF mutual inhibition motif. NDNF INs receive brief positive or
+    negative input pulses and the NDNF rate is monitored. Vary the pulse strength and SOM-NDNF inhibition.
+    Plot results.
+
+    Parameters:
+    - noise: level of white noise added to neural activity
+    - w_hetero: whether to add heterogeneity to weight matrices
+    - mean_pop: whether to use mean population parameters
+    - pre_inh: whether to include presynaptic inhibition
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
+
+    # define parameter dictionaries
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+
+    # increase NDNF-dendrite inhibition s.t. mean PC rate doesn't change when dendritic inhibition changes
+    w_mean['DN'] = 0.6
+    if target_DN:
+        w_mean['DN'] = 0.8
+
+    # simulation paramters
+    dur = 8000
+    dt = 1
+    nt = int(dur/dt)
+
+    # generate inputs
+    t_act_s, t_act_e = 1000, 2000
+    xFF = get_null_ff_input_arrays(nt, N_cells)
+
+    # array of pulse strengths and SOM-NDNF inhibition to test
+    stim_NDNF = np.arange(-1.1, 1.2, 0.2)
+    vals_wNS = np.arange(0.5, 1.61, 0.1)
+
+    # empty array for storage
+    rNDNF = np.zeros((len(stim_NDNF), len(vals_wNS)))
+
+    # loop over pulse strengths and SOM-NDNF inhibition
+    for i, wNS in enumerate(vals_wNS):
+
+        print(f'wNS={wNS}')
+
+        w_mean['NS'] = wNS
+        
+        for j, stim in enumerate(stim_NDNF):
+
+            xFF['N'][t_act_s:t_act_e] = stim
+
+            # instantiate model
+            model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                   flag_pre_inh=pre_inh, flag_p_on_DN=target_DN)
+
+            # run model
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, calc_bg_input=True,
+                                                                   monitor_dend_inh=True, noise=noise)
+            
+            # save mean NDNF rate a few seconds after the pulse
+            rNDNF[j, i] = np.mean(rN[7000:8000, :])
+
+    # Plotting
+    # --------
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(2, 1, figsize=(1.7, 2.8), dpi=dpi, gridspec_kw={'left':0.26, 'bottom': 0.13, 'top':0.97, 'right': 0.94, 'wspace': 0.5, 'hspace': 0.8})
+    # plot NDNF rate for positive and negative pulse strength as a function of SOM-NDNF inhibition
+    ax[0].plot(vals_wNS, rNDNF[-1, :], c='#E7A688', lw=2, ls='--', label='pos pulse')
+    ax[0].plot(vals_wNS, rNDNF[0, :], c='#BB5525', lw=2, label='neg pulse', zorder=-1)
+    # plot 2D heatmap of NDNF rate as a function of pulse strength and SOM-NDNF inhibition
+    mp = ax[1].pcolormesh(vals_wNS, stim_NDNF, rNDNF, cmap='YlOrBr_r', vmin=0, vmax=3)
+    # colorbar, labels etc
+    cb = fig.colorbar(mp, ax=ax[1], ticks=[0, 1, 2, 3])
+    cb.set_label('NDNF act.', rotation=0, labelpad=-15, y=1.17)
+    ax[0].set(xlabel='SOM-NDNF inh.', ylabel='NDNF act.', ylim=[-0.1, 2.5], xticks=[0.5, 1, 1.5], yticks=[0, 1, 2])
+    ax[1].set(xlabel='SOM-NDNF inh.', ylabel='pulse to NDNF', xticks=[0.5, 1, 1.5], yticks=[-1, 0, 1])
+
+    # Saving
+    # ------
+    if save:
+        savename = '../results/figs/Naumann23_draft1/exp2-2_bistability.pdf' if not isinstance(save, str) else save
+        if not pre_inh:
+            savename = savename.replace('.pdf', '_nopreinh.pdf')
+        fig.savefig(savename, dpi=300)
+        plt.close(fig)
+
+
 def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, save=False, noise=0.0, wNS=1.4, 
                                   flag_sine=False, stimup=1, stimdown=-1, target_ND=False):
     """
@@ -104,6 +189,7 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
         # plot the same as above but with the PC rate as well
         fig, ax = plt.subplots(3, 1, figsize=(1.77, 1.8), dpi=dpi, sharex=True, sharey=False,
                                 gridspec_kw={'left': 0.25, 'bottom': 0.22, 'top': 0.95, 'right': 0.95, 'hspace': 0.3})
+        alpha = 0.5
         ax[0].plot(t/1000, rN, alpha=alpha, c=cNDNF, lw=1)
         ax[0].plot(t/1000, rS, alpha=alpha, c=cSOM, lw=1)
         ax[1].plot(t/1000, rD, alpha=alpha, c='gray', lw=1)
@@ -170,89 +256,6 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
         else:
             savename = f'../results/figs/Naumann23_draft1/exp2-2_switch_wNS-{wNS_str}.pdf' if not isinstance(save, str) else save
             fig.savefig(savename, dpi=300)
-        plt.close(fig)
-
-
-def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, save=False):
-    """
-    Check for bistability within the SOM-NDNF mutual inhibition motif. NDNF INs receive brief positive or
-    negative input pulses and the NDNF rate is monitored. Vary the pulse strength and SOM-NDNF inhibition.
-    Plot results.
-
-    Parameters:
-    - noise: level of white noise added to neural activity
-    - w_hetero: whether to add heterogeneity to weight matrices
-    - mean_pop: whether to use mean population parameters
-    - pre_inh: whether to include presynaptic inhibition
-    - save: if it's a string, name of the saved file, else if False nothing is saved
-    """
-
-    # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
-    # increase NDNF-dendrite inhibition s.t. mean PC rate doesn't change when dendritic inhibition changes
-    w_mean['DN'] = 0.6
-
-    # simulation paramters
-    dur = 8000
-    dt = 1
-    nt = int(dur/dt)
-
-    # generate inputs
-    t_act_s, t_act_e = 1000, 2000
-    xFF = get_null_ff_input_arrays(nt, N_cells)
-
-    # array of pulse strengths and SOM-NDNF inhibition to test
-    stim_NDNF = np.arange(-1.1, 1.2, 0.2)
-    vals_wNS = np.arange(0.5, 1.61, 0.1)
-
-    # empty array for storage
-    rNDNF = np.zeros((len(stim_NDNF), len(vals_wNS)))
-
-    # loop over pulse strengths and SOM-NDNF inhibition
-    for i, wNS in enumerate(vals_wNS):
-
-        print(f'wNS={wNS}')
-
-        w_mean['NS'] = wNS
-        
-        for j, stim in enumerate(stim_NDNF):
-
-            xFF['N'][t_act_s:t_act_e] = stim
-
-            # instantiate model
-            model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                                flag_pre_inh=pre_inh)
-
-            # run model
-            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, calc_bg_input=True,
-                                                                   monitor_dend_inh=True, noise=noise)
-            
-            # save mean NDNF rate a few seconds after the pulse
-            rNDNF[j, i] = np.mean(rN[7000:8000, :])
-
-    # Plotting
-    # --------
-    dpi = 300 if save else DPI
-    fig, ax = plt.subplots(2, 1, figsize=(1.7, 2.8), dpi=dpi, gridspec_kw={'left':0.26, 'bottom': 0.13, 'top':0.97, 'right': 0.94, 'wspace': 0.5, 'hspace': 0.8})
-    # plot NDNF rate for positive and negative pulse strength as a function of SOM-NDNF inhibition
-    ax[0].plot(vals_wNS, rNDNF[-1, :], c='#E7A688', lw=2, ls='--', label='pos pulse')
-    ax[0].plot(vals_wNS, rNDNF[0, :], c='#BB5525', lw=2, label='neg pulse', zorder=-1)
-    # plot 2D heatmap of NDNF rate as a function of pulse strength and SOM-NDNF inhibition
-    mp = ax[1].pcolormesh(vals_wNS, stim_NDNF, rNDNF, cmap='YlOrBr_r', vmin=0, vmax=3)
-    # colorbar, labels etc
-    cb = fig.colorbar(mp, ax=ax[1], ticks=[0, 1, 2, 3])
-    cb.set_label('NDNF act.', rotation=0, labelpad=-15, y=1.17)
-    ax[0].set(xlabel='SOM-NDNF inh.', ylabel='NDNF act.', ylim=[-0.1, 2.5], xticks=[0.5, 1, 1.5], yticks=[0, 1, 2])
-    ax[1].set(xlabel='SOM-NDNF inh.', ylabel='pulse to NDNF', xticks=[0.5, 1, 1.5], yticks=[-1, 0, 1])
-
-    # Saving
-    # ------
-    if save:
-        savename = '../results/figs/Naumann23_draft1/exp2-2_bistability.pdf'
-        if not pre_inh:
-            savename = savename.replace('.pdf', '_nopreinh.pdf')
-        fig.savefig(savename, dpi=300)
         plt.close(fig)
 
 
@@ -407,30 +410,30 @@ def quantify_signals(signals, rate, bias=False):
 
 if __name__ in "__main__":
 
-    SAVE = False
+    SAVE = True
     
-    # #B&C: parameter sweep for quantification of switch regime
-    # exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, save=SAVE, pre_inh=True)
+    # Fig 4: Mutual inhibition between NDNF and SOM
+    # ---------------------------------------------
+    
+    #B&C: parameter sweep for quantification of switch regime
+    exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, save=SAVE, pre_inh=True)
 
-    # # Fig 4: Switch between NDNF and SOM inhibition
-    # # E: pulse input example (not bistable)
-    # ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=0.7, stimup=0.6, stimdown=-0.5,
-    #                                save=SAVE)
+    # E: pulse input example (not bistable)
+    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=0.7, stimup=0.6, stimdown=-0.5,
+                                   save=SAVE)
     
     # D: pulse input example (bistable)
     exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-                                   save=SAVE)
+                                  save=SAVE)
 
-    # # F&G: switch with time-varying input to SOM
-    # ex202_mutual_inhibition_switch(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-    #                                save=SAVE, flag_sine=True, pre_inh=True)
+    # F&G: switch with time-varying input to SOM
+    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
+                                 flag_sine=True, pre_inh=True, save=SAVE)
 
     # Supp: bistability with pre inh on NDNF-dendrite synapses
     exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
                                   target_ND=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1b.pdf')
-
-    # old stuff
-    # ex203_signaltransmission_pathways_NDNF(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True, save=False)
-    # ex203_signaltransmission_pathways_SOM(mean_pop=True, noise=0, w_hetero=False, reduced=False, pre_inh=True)
+    exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_DN=True,
+                           save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1c.pdf')
 
     plt.show()
