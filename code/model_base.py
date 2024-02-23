@@ -170,6 +170,7 @@ class NetworkModel:
         nt = len(t)
 
         p_init = p0
+        alph_p_on_DN = 0.5 # scaling factor for strength of pre inh on NDNF-dendrite synapses
 
         if self.flag_pre_inh:
             p0 = p_scale if p_scale else self.g_func(rN0)
@@ -178,7 +179,7 @@ class NetworkModel:
                 self.Ws['NS'] = self.Ws['NS']/p0*self.weights_scaled_by
                 self.Ws['DS'] = self.Ws['DS']/p0*self.weights_scaled_by
                 if self.flag_p_on_DN:
-                    self.Ws['DN'] = self.Ws['DN']/p0*self.weights_scaled_by
+                    self.Ws['DN'] = self.Ws['DN']/(alph_p_on_DN*p0+(1-alph_p_on_DN)*1)*self.weights_scaled_by
                 self.weights_scaled_by = p0  # we're saving this so we don't scale weights again upon next run
                                             # if the function is called again with the same p0, weights remain the same
         else:
@@ -262,7 +263,7 @@ class NetworkModel:
             xiV = np.random.normal(0, noise, size=self.N_cells['V'])
 
             # release factor for NDNF->dendrite depends on flag
-            pDN = p[ti] if self.flag_p_on_DN else 1
+            pDN = alph_p_on_DN*p[ti] + (1-alph_p_on_DN)*1 if self.flag_p_on_DN else 1
 
             # compute input currents
             curr_rE = self.wED * rD[ti] - self.Ws['EP'] @ rP[ti] + self.Xbg['E'] + xFF['E'][ti] + xiE
