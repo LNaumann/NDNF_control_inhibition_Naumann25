@@ -20,7 +20,8 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 DPI = 300
 
 
-def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True, target_ND=False, save=False):
+def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=False, mean_pop=True, noise=0.0, pre_inh=True,
+                                target_ND=False, target_VS=False, save=False):
     """
     Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
 
@@ -64,7 +65,7 @@ def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=False, mean_pop=True, n
 
         # instantiate and run model
         model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                                flag_pre_inh=pre_inh, flag_p_on_DN=flag_p_on_DN)
+                                flag_pre_inh=pre_inh, flag_p_on_DN=target_ND, flag_p_on_VS=target_VS)
         t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
                                                                noise=noise)
 
@@ -90,8 +91,7 @@ def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=False, mean_pop=True, n
     # plot SOM and NDNF dendritic inhibition and sum (i.e. total dendritic inhibition)
     ax[1].plot(ndnf_input, rS_inh_record, c=cSOM, ls='--', lw=lw)
     ax[1].plot(ndnf_input, rN_inh_record, c=cNDNF, ls='--', lw=lw)
-    if not target_ND:
-        ax[1].plot(ndnf_input, rS_inh_record+rN_inh_record, c='#978991', ls='-', lw=lw, zorder=-1)
+    ax[1].plot(ndnf_input, rS_inh_record+rN_inh_record, c='#978991', ls='-', lw=lw, zorder=-1)
     # labels etc
     ax[0].set(ylabel='activity (au)', xlim=[-1, 1], ylim=[-0.1, 2.5], yticks=[0, 1, 2])
     ax[1].set(ylabel='dend. inh. (au)', ylim=[-0.05, 1.1], yticks=[0, 1], xlabel=r'$\Delta$ NDNF input')
@@ -502,6 +502,8 @@ if __name__ in "__main__":
 
     SAVE = False
 
+    # Figure 3: Competition for dendritic inhibition
+
     # # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
     # exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
     # exp_fig3top_vary_NDNF_input(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
@@ -510,10 +512,16 @@ if __name__ in "__main__":
     # exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
     # exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
-    # Fig 3 supp: pre inh targets NDNF-dendrite synapses
-    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_ND=True, dur=3000,
-                                save='../results/figs/Naumann23_draft1/supps/fig34_supp1a.pdf')
+    # Supplementary figures
+    # ---------------------
 
+    # Fig 3/4, Supp 1b: bistability with pre inh on NDNF-dendrite synapses
+    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_ND=True, dur=3000,
+                                save='../results/figs/Naumann23_draft1/supps/fig34_supp1b.pdf')
+
+    # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
+    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_VS=True, dur=3000,
+                                save='../results/figs/Naumann23_draft1/supps/fig34_supp2b.pdf')
 
 
     # --- OLD --- 
