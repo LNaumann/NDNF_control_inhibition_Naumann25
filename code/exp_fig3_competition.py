@@ -500,17 +500,17 @@ def exp_unused_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pr
 
 if __name__ in "__main__":
 
-    SAVE = False
+    SAVE = True
 
     # Figure 3: Competition for dendritic inhibition
 
-    # # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
-    # exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
-    # exp_fig3top_vary_NDNF_input(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
+    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    exp_fig3top_vary_NDNF_input(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
-    # # Fig 3 (bottom): total dendritic inhibiion
-    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
-    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # Fig 3 (bottom): total dendritic inhibiion
+    exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
     # Supplementary figures
     # ---------------------
