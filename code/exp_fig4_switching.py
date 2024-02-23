@@ -20,7 +20,7 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 DPI = 300
 
 
-def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, save=False, target_DN=False):
+def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, save=False, target_DN=False, target_VS=False):
     """
     Check for bistability within the SOM-NDNF mutual inhibition motif. NDNF INs receive brief positive or
     negative input pulses and the NDNF rate is monitored. Vary the pulse strength and SOM-NDNF inhibition.
@@ -32,6 +32,8 @@ def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=Tru
     - mean_pop: whether to use mean population parameters
     - pre_inh: whether to include presynaptic inhibition
     - save: if it's a string, name of the saved file, else if False nothing is saved
+    - target_DN: whether to target NDNF-dendrite synapses with presynaptic inhibition
+    - target_VS: whether to target VIP-SOM synapses with presynaptic inhibition
     """
 
     # define parameter dictionaries
@@ -71,7 +73,7 @@ def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=Tru
 
             # instantiate model
             model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                                   flag_pre_inh=pre_inh, flag_p_on_DN=target_DN)
+                                   flag_pre_inh=pre_inh, flag_p_on_DN=target_DN, flag_p_on_VS=target_VS)
 
             # run model
             t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, calc_bg_input=True,
@@ -106,7 +108,7 @@ def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=Tru
 
 
 def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, save=False, noise=0.0, wNS=1.4, 
-                                  flag_sine=False, stimup=1, stimdown=-1, target_ND=False):
+                                  flag_sine=False, stimup=1, stimdown=-1, target_ND=False, target_VS=False):
     """
     Check for bistability. NDNF INs receive a positive and a negative pulse. In a bistable regime, the NDNF rate
     is switched to higher or lower activity after the pulse. Plot IN rates and mean NDNF- and SOM-mediated dendritic
@@ -123,6 +125,7 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
     - stimup: amplitude of positive pulse
     - stimdown: amplitude of negative pulse
     - target_ND: whether to target NDNF-dendrite synapses with presynaptic inhibition
+    - target_VS: whether to target VIP-SOM synapses with presynaptic inhibition
     """
 
     # define parameter dictionaries
@@ -138,7 +141,7 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
 
     # instantiate model
     model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                           flag_pre_inh=pre_inh, flag_p_on_DN=target_ND)
+                           flag_pre_inh=pre_inh, flag_p_on_DN=target_ND, flag_p_on_VS=target_VS)
 
     # simulation paramters
     dur = 10000
@@ -175,6 +178,8 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
         alpha = 0.5
         ax[0].plot(t/1000, rN, c=cNDNF, alpha=alpha, lw=1, label='NDNF')
         ax[0].plot(t/1000, rS, c=cSOM, alpha=alpha, lw=1, label='SOM')
+        if target_VS:
+            ax[0].plot(t/1000, rV, alpha=alpha, c=cVIP, lw=1)
         # plot mean NDNF- and SOM-mediated dendritic inhibition
         mean_dend_NDNF = np.mean(np.array(other['dend_inh_NDNF']), axis=1)
         mean_dend_SOM = np.mean(np.array(other['dend_inh_SOM']), axis=1)
@@ -410,7 +415,8 @@ def quantify_signals(signals, rate, bias=False):
 
 if __name__ in "__main__":
 
-    SAVE = True
+    SAVE = False
+    plot_supps = False
     
     # Fig 4: Mutual inhibition between NDNF and SOM
     # ---------------------------------------------
@@ -430,10 +436,21 @@ if __name__ in "__main__":
     exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
                                  flag_sine=True, pre_inh=True, save=SAVE)
 
-    # Supp: bistability with pre inh on NDNF-dendrite synapses
-    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-                                  target_ND=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1b.pdf')
-    exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_DN=True,
-                           save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1c.pdf')
+    if plot_supps:
+
+    # Supplementary figures
+    # ---------------------
+
+        # Fig 3/4, Supp 1c/d: bistability with pre inh on NDNF-dendrite synapses
+        exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
+                                    target_ND=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1c.pdf')
+        exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_VS=True,
+                            save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1d.pdf')
+        
+        # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
+        exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.4,
+                                    target_VS=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp2c.pdf')
+        exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_VS=True,
+                            save=f'../results/figs/Naumann23_draft1/supps/fig34_supp2d.pdf')
 
     plt.show()

@@ -33,6 +33,8 @@ def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=False, mean_pop=True, n
     - noise: level of white noise added to neural activity
     - pre_inh: whether to include presynaptic inhibition
     - save: if it's a string, name of the saved file, else if False nothing is saved
+    - target_ND: whether to target NDNF->dendrite synapse with presynaptic inhibition
+    - target_VS: whether to target SOM->VIP synapse with presynaptic inhibition
     """
 
     # extract number of timesteps
@@ -500,7 +502,8 @@ def exp_unused_motifs_SOM_NDNF(dur=2000, dt=1, w_hetero=False, mean_pop=True, pr
 
 if __name__ in "__main__":
 
-    SAVE = True
+    SAVE = False
+    plot_supps = False
 
     # Figure 3: Competition for dendritic inhibition
 
@@ -512,16 +515,18 @@ if __name__ in "__main__":
     exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
     exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
-    # Supplementary figures
-    # ---------------------
+    if plot_supps:
 
-    # Fig 3/4, Supp 1b: bistability with pre inh on NDNF-dendrite synapses
-    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_ND=True, dur=3000,
-                                save='../results/figs/Naumann23_draft1/supps/fig34_supp1b.pdf')
+        # Supplementary figures
+        # ---------------------
 
-    # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
-    exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_VS=True, dur=3000,
-                                save='../results/figs/Naumann23_draft1/supps/fig34_supp2b.pdf')
+        # Fig 3/4, Supp 1b: bistability with pre inh on NDNF-dendrite synapses
+        exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_ND=True, dur=3000,
+                                    save='../results/figs/Naumann23_draft1/supps/fig34_supp1b.pdf')
+
+        # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
+        exp_fig3top_vary_NDNF_input(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, target_VS=True, dur=3000,
+                                    save='../results/figs/Naumann23_draft1/supps/fig34_supp2b.pdf')
 
 
     # --- OLD --- 
