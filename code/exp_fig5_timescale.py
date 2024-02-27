@@ -543,18 +543,16 @@ if __name__ in "__main__":
     # ----------------------------------------------
 
     # # Fig 5 B: timescale of inhibition (SOM vs NDNF) 
-    # exp_fig5C_IPSC_timescale(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    exp_fig5B_IPSC_timescale(mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
-    # # Fig 5 C: frequency preference
-    # exp301_frequency_preference(save=SAVE, mean_pop=False, w_hetero=True, noise=0.0, pre_inh=True, plot_supp=True)
-
-    # # Fig 5 D&E: responses of PC to SOM/NDNF stimulation depend on parameters and stimulus duration
-    # exp_fig5CD_transient_signals(save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, plot_supp=True)
+    # # Fig 5 C, D, E: responses of PC to SOM/NDNF stimulation depend on parameters and stimulus duration
+    exp_fig5CD_transient_signals(save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, plot_supp=True)
     exp_fig5E_inh_change(save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.4)
     exp_fig5E_inh_change(save=SAVE, mean_pop=False, w_hetero=True, noise=0.1, pre_inh=True, wDN=0.8)
 
     # old stuff
-    # exp304_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=False)
+    # exp_old_transient_effects(reduced=False, pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=False)
     # make_sine(1000, 4, plot=True)
+    # exp_old_frequency_preference(save=SAVE, mean_pop=False, w_hetero=True, noise=0.0, pre_inh=True, plot_supp=True)
 
     plt.show()
