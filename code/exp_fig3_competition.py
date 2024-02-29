@@ -5,13 +5,17 @@ Experiments for Figure 3: Competition between SOM- and NDNF-mediated dendritic i
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-plt.style.use('pretty')
 import matplotlib as mpl
+
+# optional custom style sheet
+if 'pretty' in plt.style.available:
+    plt.style.use('pretty')
 lw = mpl.rcParams['lines.linewidth']
 
 import model_base as mb
 from helpers import get_null_ff_input_arrays, get_model_colours
 
+# get model colours
 cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 
 # figure path and settings
@@ -98,7 +102,7 @@ def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=True, mean_pop=False, n
     # ------
     if save:
         pre_inh_str = '_with_pre_inh' if pre_inh else '_without_pre_inh'
-        savename = f"{FIG_PATH}exp_fig3top{pre_inh_str}.pdf" if not isinstance(save, str) else save 
+        savename = f"{FIG_PATH}exp_fig3top_competition{pre_inh_str}.pdf" if not isinstance(save, str) else save 
         fig.savefig(savename, dpi=300)
         plt.close(fig)
 
@@ -171,7 +175,7 @@ def exp_fig3bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=True, mea
     # saving
     if save:
         pre_inh_str = '_with_pre_inh' if pre_inh else '_without_pre_inh'
-        savename = f"{FIG_PATH}exp_fig3bottom{pre_inh_str}.pdf" if not isinstance(save, str) else save 
+        savename = f"{FIG_PATH}exp_fig3bottom_dendritic_inh{pre_inh_str}.pdf" if not isinstance(save, str) else save 
         fig.savefig(savename, dpi=300)
         plt.close(fig) 
 
