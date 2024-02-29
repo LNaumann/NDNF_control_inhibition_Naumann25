@@ -662,6 +662,57 @@ def signal_amplitude(x, tstart=500):
     return np.mean(ampls)
 
 
+def unused_plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, dur_stim):
+
+    fig, ax = plt.subplots(3, 1, dpi=DPI, figsize=(3.8, 2.5), gridspec_kw={'height_ratios': [1, 1, 1], 'wspace': 0.2, 'hspace': 0.2, 'right':0.8, 'top':0.95})
+
+    for i, cond in enumerate(['fp', 'op', 'up']):
+
+        res = eval('res_'+cond)
+
+        # plot changes in neural responses
+        ax[0].bar(i, np.mean(res['rE'][buffer:buffer+dur_stim])-np.mean(res['rE'][:buffer]), color=cPC, width=0.3)
+        ax[1].bar(i-0.3, np.mean(res['rN'][buffer:buffer+dur_stim])-np.mean(res['rN'][:buffer]), color=cNDNF, width=0.2, label='NDNF' if i==0 else None)
+        ax[1].bar(i-0.1, np.mean(res['rS'][buffer:buffer+dur_stim])-np.mean(res['rS'][:buffer]), color=cSOM, width=0.2, label='SOM' if i==0 else None)
+        ax[1].bar(i+0.1, np.mean(res['rP'][buffer:buffer+dur_stim])-np.mean(res['rP'][:buffer]), color=cPV, width=0.2, label='PV' if i==0 else None)
+        ax[1].bar(i+0.3, np.mean(res['rV'][buffer:buffer+dur_stim])-np.mean(res['rV'][:buffer]), color=cVIP, width=0.2, label='VIP' if i==0 else None)
+
+        # change in dendritic inhibition
+        dend_inh_SOM = np.array(res['other']['dend_inh_SOM']).mean(axis=1)
+        dend_inh_NDNF = np.array(res['other']['dend_inh_NDNF']).mean(axis=1)
+        ddi_SOM = np.mean(dend_inh_SOM[buffer:buffer+dur_stim])-np.mean(dend_inh_SOM[:buffer])
+        ddi_NDNF = np.mean(dend_inh_NDNF[buffer:buffer+dur_stim])-np.mean(dend_inh_NDNF[:buffer])
+        ax[2].bar(i-0.2, ddi_NDNF, facecolor='none', edgecolor=cNDNF, hatch='/////', width=0.2, label='NDNF' if i==0 else None)
+        ax[2].bar(i, ddi_SOM, facecolor='none', edgecolor=cSOM, hatch='/////', width=0.2, label='SOM' if i==0 else None)
+        ax[2].bar(i+0.2, ddi_SOM+ddi_NDNF, facecolor='none', edgecolor='silver', hatch='/////', width=0.2, label='sum' if i==0 else None)
+        
+        # draw zero lines
+        ax[0].hlines(0, -0.5, 2.5, color='k', lw=1)
+        ax[1].hlines(0, -0.5, 2.5, color='k', lw=1)
+        ax[2].hlines(0, -0.5, 2.5, color='k', lw=1)
+
+        # legend
+        ax[1].legend(loc=(1.01, 0.1), frameon=False, handlelength=1)
+        ax[2].legend(loc=(1.01, 0.1), frameon=False, handlelength=1, title='dend. inh.')
+        [ax[k].spines['bottom'].set_visible(False) for k in range(3)]
+
+        # labels
+        ax[0].set(ylabel=r'$\Delta$ PC act.', xticks=[], ylim=[-0.2, 0.5], yticks=[0, 0.5])
+        ax[1].set(ylabel=r'$\Delta$ IN act.', xticks=[], ylim=[-2.1, 2.1], yticks=[-2, 0, 2])
+        ax[2].set(ylabel=r'$\Delta$ inh.', xticks=[0, 1, 2], ylim=[-4, 4.5], yticks=[-3, 0, 3], xticklabels=['P=S', 'P>S', 'P<S'])
+
+
+def unused_get_exc_and_inh_inputs(model, res, xFF, ts, te):
+
+    som_inh_d = np.array(res['other']['dend_inh_SOM'][ts:te]).mean()
+    ndnf_inh_d = np.array(res['other']['dend_inh_NDNF'][ts:te]).mean()
+    pred_exc_d = xFF['D'][ts:te].mean()
+    pv_inh_s = (model.Ws['EP'] @ np.mean(res['rP'][ts:te], axis=0)).mean()
+    sens_exc_s = xFF['E'][ts:te].mean()
+
+    return som_inh_d, ndnf_inh_d, pred_exc_d, pv_inh_s, sens_exc_s
+
+
 def exp401_perturbations(mean_pop=True, w_hetero=False, reduced=False, pre_inh=False, noise=0.0, save=False):
     """
     Experiment1: activate and inactive different cell types and check effect on all other cells. Plots big fig array of
