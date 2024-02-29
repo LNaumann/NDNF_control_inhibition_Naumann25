@@ -6,25 +6,20 @@ import model_base as mb
 from experiments import get_model_colours
 from experiments import get_null_ff_input_arrays
 
+# colours
 cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 cpred = '#832161'
 csens = '#F5B656'
 
-
+# figure path and settings
+FIG_PATH = '../results/figs/Naumann23_draft1/'
+SUPP_PATH = '../results/figs/Naumann23_draft1/supps/'
 DPI = 200
 
 
-def slice_dict(dic, ts, te):
-
-    dic_new = dict()
-    for k in dic.keys():
-        dic_new[k] = dic[k][ts:te]
-
-    return dic_new
-
-
-def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_NDNF=True, with_wPN=False, NDNF_get_P=False,
-                             p_scale=None, noise=0.1, xFF_NDNF=0, rNinit=0, b=0.12, save=False):
+def fig6_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, with_NDNF=True, with_wPN=False, NDNF_get_P=False,
+                           noise=0.1, NDNF_act_strength=1, rN0=4, b=0.15, plot_all_variables=False, save=False,
+                           is_supp=False, plot_vary_NDNF_input=False):
     """
     Experiments to explore predictive coding microcircuit. Plots all panels for the paper (Fig. 6).
 
@@ -36,45 +31,58 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_
     - with_NDNF:  bool, if True, include NDNF interneurons in the model, else not
     - with_wPN:   bool, if True, include nonzero NDNF-PV inhibition
     - NDNF_get_P: bool, if True, NDNFs receive prediction input
-    - p_scale:    bool, if True, scale weights affected by pre. inh. with baseline release factor
     - noise:      float, noise level in the model (std of added Gaussian white noise)
-    - xFF_NDNF:   float, additional feedforward input to NDNF interneurons
-    - rNinit:     float, initial value of NDNF activity
+    - NDNF_act_strength:   float, additional feedforward input to NDNF interneurons
+    - rN0:     float, initial value of NDNF activity
     - b:          float (0-1), presynaptic inhibition strength
+    - plot_all_variables: bool, whether to plot all variables for all phases
     - save:       bool, whether to save figures
+    - is_supp:    bool, if True, save figures in supplementary folder
+    - plot_vary_NDNF_input: bool, if True, plot effect of varying NDNF input on mismatch responses
     """
     
 
-    # define parameter dictionaries
+    # define deafault parameter dictionaries
     N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
 
-    # set parameters to get negative prediction errors
-    w_mean_update = dict(EP=2, DE=0.2, DS=1, PE=1.2, PP=0.4, PS=0.3, PV=0.15, SE=1, SV=0.5, VE=1, VS=1)
+    # set parameters to get mismatch responses
+    w_mean_update = dict(EP=2, DE=0.2, DS=1, PE=1.2, PP=0.4, PS=0.3, PV=0.15, SE=1, SV=0.5, VE=1, VS=1,
+                         NS=0.5, DN=1.5, PN=0., VN=0.1)
 
+    save_name_add = ''
+
+
+    # Update parameters depending on model details
+    # --------------------------------------------
+
+    # parameters with NDNF>PV inhibition > 0
+    if with_wPN:
+        w_mean_update.update(dict(PN=0.1))
+        save_name_add += '_with_wPN'
+
+    # paramaters without presynaptic inhibition
+    if not pre_inh:
+        w_mean_update.update(dict(DS=1.6))
+        save_name_add += '_no_pre_inh'
+
+    # parameters when NDNFs get prediction (P)
     if NDNF_get_P:
-        # parameters for prediction error neurons when NDNFs get P
-        # ---------------------------------------------------------
-        w_mean_update.update(dict(NS=0.7, DN=1, PN=0., VN=0.1))
-        if with_wPN:
-            w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.4, PS=0.27))  # parameters with wPN > 0
+        w_mean_update.update(dict(VN=0.3))
+        save_name_add += '_NDNF_get_P'
 
-        # background inputs adapted to default (double check these?)
-        bg_inputs = {'E': 9, 'D': 8, 'N': 7.6, 'S': 5.0, 'P': 6.2, 'V': 7.4}
-
-    else:
-        # paremters for prediction error neurons when NDNFs don't get P
-        # ------------------------------------------------------------
-        w_mean_update.update(dict(NS=0.5, DN=1.5, PN=0., VN=0.1))  # parameters with wPN = 0
-        if with_wPN:
-            w_mean_update.update(dict(NS=0.5, DN=1, PN=0.1, VN=0.2, PS=0.25))  # parameters with wPN > 0 
-
-        # background inputs adapted to default
-        bg_inputs = {'E': 9, 'D': 10, 'N': 6.8, 'S': 5.0, 'P': 6.2, 'V': 7.4}
+    # parameters without NDNFs
+    if not with_NDNF:
+        bg_inputs['N'] = 0
+        rN0 = 0
+        pre_inh = False
+        save_name_add += '_no_NDNF'
 
     # update mean weights using weight updates create above
     w_mean.update(w_mean_update)
 
-    # simulation parameters
+
+    # Simulation parameters
+    # ---------------------
     dur_stim = 2000  # duration of stimulus per phase (ms)
     buffer = 2000    # buffer time before and after stimulus (ms)
     dur = 2*buffer + dur_stim  # duration of one phase (ms)
@@ -83,7 +91,9 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_
     t = np.arange(0, dur_tot, dt)  # time vector
     nt = len(t)  # number of time steps
 
-    # construct sensory and prediction input
+
+    # Sensory and prediction input
+    # ----------------------------
     amp_s, amp_p = 1, 1  # amplitude of sensory and prediction input
     sensory, prediction = get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt)
 
@@ -99,58 +109,49 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_
 
     # store baseline ff input to NDNFs (to be manipulated later)
     xFF_NDNF_bl = xFF['N']
-
-    # give extra input to NDNF interneurons to get "prediction neurons" ( if input to NDNF is > 0)
-    # xFF['N'] += xFF_NDNF
-
-    # scale_w_by_p = False
-
-    if not with_NDNF:
-        bg_inputs['N'] = 0
-        rN0 = 0
-        pre_inh = False
-        xFF['N'] = xFF_NDNF_bl
-    else:
-        rN0 = rNinit
-        # calc_bg_input = False  # set to False to get prediction errors neurons with inactive NDNF and predictions with active NDNFs
-        # xFF['N'] = xFF_NDNF_bl + xFF_NDNF
     
-    # instantiate model
-    model = mb.NetworkModel(N_cells, w_mean.copy(), conn_prob, taus, bg_inputs.copy(), wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh, flag_with_NDNF=with_NDNF,
-                            w_std_rel=0.01)
-    if pre_inh:
-        model.b = b
-    p0 = model.g_func(rN0) #0.3
-    print('pscale = ', p_scale if p_scale else model.g_func(rN0))
 
-    # run simulation without manipulations
-    t, res_fp, res_op, res_up, bg_inputs_df = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=True, noise=noise)
+    # Instantiate model
+    # -----------------
+    model = mb.NetworkModel(N_cells, w_mean.copy(), conn_prob, taus, bg_inputs.copy(), wED=1, flag_w_hetero=w_hetero, flag_pre_inh=pre_inh, flag_with_NDNF=with_NDNF,
+                            w_std_rel=0.01, b=b)
+    
+
+    # Run simulation without manipulations
+    # -------------------------------------
+    t, res_fp, res_op, res_up, bg_inputs_df = run_pc_phases(dur, model, xFF, rN0=rN0, p0=model.g_func(rN0), dt=dt, calc_bg_input=True, noise=noise)
     print(bg_inputs_df)
 
-    plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory, buffer)
-    plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, buffer, save=save)
-    plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, dur_stim)
+    # plot mismatch responses
+    plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory,
+                            save=save, save_name='default'+save_name_add, is_supp=is_supp)
+    # plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, dur_stim)  # old
+    if plot_all_variables:
+        plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory)
 
-    # activate NDNF interneurons and simulate again, use calculated background inputs
-    xFF_NDNF = 1
-    rN0 = 6
-    p0 = model.g_func(rN0)
-    xFF['N'] = xFF_NDNF_bl + xFF_NDNF
-    t, res_fp_act, res_op_act, res_up_act, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False,
-                                                             noise=noise)
-    plot_all_variables_all_phases(t, res_fp_act, res_op_act, res_up_act, prediction, sensory, buffer)
-    plot_mismatch_responses(t, res_fp_act, res_op_act, res_up_act, prediction, sensory, buffer, save_name='actNDNF', save=save)
 
-    # inactivate NDNF interneurons and simulate again
-    xFF_NDNF = -1
-    rN0 = 2
-    p0 = model.g_func(rN0)
-    xFF['N'] = xFF_NDNF_bl + xFF_NDNF
-    t, res_fp_inact, res_op_inact, res_up_inact, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False,
-                                                                   noise=noise)
-    plot_all_variables_all_phases(t, res_fp_inact, res_op_inact, res_up_inact, prediction, sensory, buffer)
+    # Activate NDNF interneurons and simulate again, use calculated background inputs
+    # -------------------------------------------------------------------------------
+    xFF['N'] = xFF_NDNF_bl + NDNF_act_strength # additional feedforward input to NDNF interneurons
+    rN0 = 6 if pre_inh else 4.8                # adapt initial value of NDNF activity
+    if NDNF_get_P:
+        rN0 = 5.
+    # set background inputs to defaults, they are not recomputed
+    model.Xbg = bg_inputs_df
 
-    # plot change in inh and exc inputs to PCs
+    # run simulations
+    t, res_fp_act, res_op_act, res_up_act, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=model.g_func(rN0), dt=dt, noise=noise,
+                                                             calc_bg_input=False, scale_w_by_p=False)
+
+    # plotting
+    plot_mismatch_responses(t, res_fp_act, res_op_act, res_up_act, prediction, sensory,
+                            save_name='actNDNF'+save_name_add, save=save, is_supp=is_supp)
+    if plot_all_variables:
+        plot_all_variables_all_phases(t, res_fp_act, res_op_act, res_up_act, prediction, sensory)
+
+
+    # Change in inh and exc inputs to PCs
+    # -----------------------------------
     fig, ax = plt.subplots(1, 2, dpi=DPI, figsize=(2.8, 1.), sharey=True,
                             gridspec_kw={'wspace': 0.1, 'right': 0.98, 'left': 0.15, 'bottom': 0.1, 'top': 0.95})
     for i, res in enumerate([res_fp, res_fp_act]):
@@ -175,59 +176,81 @@ def exp501_predictive_coding(mean_pop=True, w_hetero=False, pre_inh=False, with_
         ax[i].axhline(0, c='k', lw=1)
     ax[0].set(ylabel=r'$\Delta$ exc./inh.')
 
-    # plot feedback, mismatch and playback response for different levels of NDNF activation
-
-    ndnf_act_levels = np.arange(0, 1.6, 0.2)
-    fb_response = np.zeros(len(ndnf_act_levels))
-    mm_response = np.zeros(len(ndnf_act_levels))
-    pb_response = np.zeros(len(ndnf_act_levels))
-
-    for j, ndnf_act in enumerate(ndnf_act_levels):
-        print(f"Running simulation with NDNF activation level {ndnf_act:1.1f}...")
-
-        xFF['N'] = xFF_NDNF_bl + ndnf_act
-        t, res_fp, res_op, res_up, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=p0, dt=dt, calc_bg_input=False, scale_w_by_p=False)
-        fb_response[j] = np.mean(res_fp['rE'][buffer:buffer+dur_stim])-np.mean(res_fp['rE'][:buffer])
-        mm_response[j] = np.mean(res_op['rE'][buffer:buffer+dur_stim])-np.mean(res_op['rE'][:buffer])
-        pb_response[j]  = np.mean(res_up['rE'][buffer:buffer+dur_stim])-np.mean(res_up['rE'][:buffer])
-
-    fig2, ax2 = plt.subplots(1, 1, dpi=DPI, figsize=(2.5, 1.), gridspec_kw={'right': 0.95, 'left': 0.2, 'bottom': 0.35, 'top': 0.94})
-    ax2.plot(ndnf_act_levels, mm_response, c=cpred, lw=1, ls='-', marker='.', label='mismatch')
-    ax2.plot(ndnf_act_levels, pb_response, c=csens, lw=1, ls='-', marker='.', label='playback')
-    ax2.plot(ndnf_act_levels, fb_response, c='k', ls='-', marker='.', lw=1, label='feedback')
-    ax2.set(xlabel='NDNF activation', ylabel=r'$\Delta$ PC act.', ylim=[-0.05, 0.7], yticks=[0, 0.5], xticks=[0, 1])
-    # ax.pcolormesh(np.array([fb_response, mm_response, pb_response]))
-
-
+    # saving
     if save:
-        fig.savefig(f"../results/figs/Naumann23_draft1/exp5-3_prediction-error_inh_exc.pdf", dpi=300)
-        fig2.savefig(f"../results/figs/Naumann23_draft1/exp5-4_prediction-error_varyNDNF.pdf", dpi=300)
-        [plt.close([ff]) for ff in [fig, fig2]]
+        file_path = SUPP_PATH if is_supp else FIG_PATH
+        fig.savefig(file_path+'fig6_mismatch_inh_exc'+save_name_add+'.pdf', dpi=300)
+        plt.close(fig)
 
 
+    # Fedback, mismatch and playback response for different levels of NDNF activation
+    # (optional plotting)
+    # -------------------------------------------------------------------------------
+    if plot_vary_NDNF_input:
 
-    # plot change in pathway activity to PCs in fp phase
-    som_inh_d, ndnf_inh_d, pred_exc_d, pv_inh_s, sens_exc_s = get_exc_and_inh_inputs(model, res_fp, xFF, buffer, buffer+dur_stim)
-    som_inh_d_act, ndnf_inh_d_act, pred_exc_d_act, pv_inh_s_act, sens_exc_s_act = get_exc_and_inh_inputs(model, res_fp_act, xFF, buffer, buffer+dur_stim)
+        # levels of NDNF activation
+        ndnf_act_levels = np.arange(0, 1.6, 0.2)
 
-    fig, ax = plt.subplots(1, 1, dpi=DPI, figsize=(2, 2))
+        # empty arrays to store responses
+        fb_response = np.zeros(len(ndnf_act_levels))
+        mm_response = np.zeros(len(ndnf_act_levels))
+        pb_response = np.zeros(len(ndnf_act_levels))
 
-    # plot stacked bar plot
-    # ax.bar(0, pred_exc_d, color=cpred, width=0.5)
-    ax.bar(0, ndnf_inh_d_act-ndnf_inh_d, bottom=0, color=cNDNF, width=0.5)
-    ax.bar(0.5, som_inh_d_act-som_inh_d, color=cSOM, width=0.5)
-    ax.bar(1, (ndnf_inh_d_act+som_inh_d_act)-(ndnf_inh_d+som_inh_d), bottom=0, color='silver', width=0.5)
+        # run simulation for different levels of NDNF activation
+        for j, ndnf_act in enumerate(ndnf_act_levels):
+            print(f"Running simulation with NDNF activation level {ndnf_act:1.1f}...")
+            xFF['N'] = xFF_NDNF_bl + ndnf_act
+            t, res_fp, res_op, res_up, _ = run_pc_phases(dur, model, xFF, rN0=rN0, p0=model.g_func(rN0) , dt=dt, calc_bg_input=False, scale_w_by_p=False)
+            fb_response[j] = np.mean(res_fp['rE'][buffer:buffer+dur_stim])-np.mean(res_fp['rE'][:buffer])
+            mm_response[j] = np.mean(res_op['rE'][buffer:buffer+dur_stim])-np.mean(res_op['rE'][:buffer])
+            pb_response[j]  = np.mean(res_up['rE'][buffer:buffer+dur_stim])-np.mean(res_up['rE'][:buffer])
 
-    # som_inh = (model.Ws['DS'] @ np.mean(res_fp['rS'][buffer:buffer+dur_stim], axis=1)).mean()
+        # plotting
+        fig2, ax2 = plt.subplots(1, 1, dpi=DPI, figsize=(2.5, 1.), gridspec_kw={'right': 0.95, 'left': 0.2, 'bottom': 0.35, 'top': 0.94})
+        ax2.plot(ndnf_act_levels, mm_response, c=cpred, lw=1, ls='-', marker='.', label='mismatch')
+        ax2.plot(ndnf_act_levels, pb_response, c=csens, lw=1, ls='-', marker='.', label='playback')
+        ax2.plot(ndnf_act_levels, fb_response, c='k', ls='-', marker='.', lw=1, label='feedback')
+        ax2.set(xlabel='NDNF activation', ylabel=r'$\Delta$ PC act.', ylim=[-0.05, 0.7], yticks=[0, 0.5], xticks=[0, 1])
 
-
-
-    # # if save:
-    #     # fig5.savefig('../results/figs/Naumann23_draft1/exp5-1_prediction-error.pdf', dpi=300)
+        # saving
+        if save:
+            file_path = SUPP_PATH if is_supp else FIG_PATH
+            fig2.savefig(f"{file_path}fig6_vary_NDNF_input{save_name_add}.pdf", dpi=300)
+            plt.close(fig2)
 
 
 def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=0.5, dt=1, calc_bg_input=True,
                   scale_w_by_p=True, p_scale=None, noise=0.1):
+    """
+    Run predictive coding experiment for a given circuit model and input. The input is split into three phases:
+    - fp (fully predicted = feedback): prediction and sensory input
+    - op (overpredicted = mismatch): only prediction input
+    - up (underpredicted = playback): only sensory input
+
+    Parameters:
+    - dur:          int, duration of one phase (ms)
+    - model:        instance of NetworkModel as custuom python object
+    - xFF:          dict, feedforward input to the model
+    - rE0:          float, initial value of PC activity
+    - rD0:          float, initial value of dendrite activity
+    - rS0:          float, initial value of SOM activity
+    - rP0:          float, initial value of PV activity
+    - rV0:          float, initial value of VIP activity
+    - rN0:          float, initial value of NDNF activity
+    - p0:           float, initial value of release factor
+    - dt:           int, integration time step (ms)
+    - calc_bg_input: bool, if True, calculate background input to the model
+    - scale_w_by_p: bool, if True, scale weights affected by pre. inh.
+    - p_scale:      float, if not None, use this value to scale weights affected by pre. inh. (p_scale)
+    - noise:        float, noise level in the model (std of added Gaussian white noise)
+
+    Returns:
+    - t:             array, time vector (s)
+    - res_fp:        dict, results of the simulation for the fully predicted phase
+    - res_op:        dict, results of the simulation for the overpredicted phase
+    - res_up:        dict, results of the simulation for the underpredicted phase
+    - bg_inputs_calc: dict, calculated background inputs to the model
+    """
 
     # split FF input into three phases
     xFFfp = slice_dict(xFF, 0, dur)
@@ -252,6 +275,26 @@ def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=
     bg_inputs_calc = model.Xbg
 
     return t/1000, res_fp, res_op, res_up, bg_inputs_calc
+
+
+def slice_dict(dic, ts, te):
+    """
+    Slice a dictionary of arrays.
+
+    Parameters:
+    - dic: dict, dictionary of arrays
+    - ts:  int, start index
+    - te:  int, end index
+
+    Returns:
+    - dic_new: dict, sliced dictionary
+    """
+
+    dic_new = dict()
+    for k in dic.keys():
+        dic_new[k] = dic[k][ts:te]
+
+    return dic_new
 
 
 def get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt):
@@ -284,27 +327,29 @@ def get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt):
     prediction[op_s:op_s+dur_stim] = amp_p
 
     return sensory, prediction
-    
-
-def get_exc_and_inh_inputs(model, res, xFF, ts, te):
-
-    som_inh_d = np.array(res['other']['dend_inh_SOM'][ts:te]).mean()
-    ndnf_inh_d = np.array(res['other']['dend_inh_NDNF'][ts:te]).mean()
-    pred_exc_d = xFF['D'][ts:te].mean()
-    pv_inh_s = (model.Ws['EP'] @ np.mean(res['rP'][ts:te], axis=0)).mean()
-    sens_exc_s = xFF['E'][ts:te].mean()
-
-    return som_inh_d, ndnf_inh_d, pred_exc_d, pv_inh_s, sens_exc_s
 
 
-def plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory, buffer):
+def plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory):
+    """
+    Plot all variables for all phases of the experiment (fully predicted=feedback, overpredicted=mismatch,
+    underpredicted=playback).
 
-    # plot overview of all cell activities in all conditions
+    Parameters:
+    - t:           array, time vector (s)
+    - res_fp:      dict, results of the simulation for the fully predicted phase
+    - res_op:      dict, results of the simulation for the overpredicted phase
+    - res_up:      dict, results of the simulation for the underpredicted phase
+    - prediction:  array, prediction input (length nt)
+    - sensory:     array, sensory input (length nt)
+    """
+
+    # set up figure
     fig, ax = plt.subplots(6, 3, dpi=DPI, figsize=(4, 3), sharex=True, gridspec_kw={'height_ratios': [1, 1, 1, 1, 0.6, 0.6]}, sharey='row')
     titles = ['P=S', 'P>S', 'P<S']
 
     dur = len(t)
 
+    # loop over the three phases and plot all neuron activities
     for i, cond in enumerate(['fp', 'op', 'up']):
         res = eval('res_'+cond)
         ax[0, i].plot(t, res['rE'], c=cPC, alpha=0.5, lw=1)
@@ -327,7 +372,22 @@ def plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory
     ax[5, 0].set(ylabel='pred.', xlabel='time', ylim=[-0.05, 1.05])
 
 
-def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, buffer, save_name='default', save=False):
+def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, save_name='default', save=False, is_supp=False):
+    """
+    Plot mismatch responses for the three phases of the experiment (fully predicted=feedback, overpredicted=mismatch,
+    underpredicted=playback).
+
+    Parameters:
+    - t:           array, time vector (s)
+    - res_fp:      dict, results of the simulation for the fully predicted phase
+    - res_op:      dict, results of the simulation for the overpredicted phase
+    - res_up:      dict, results of the simulation for the underpredicted phase
+    - prediction:  array, prediction input (length nt)
+    - sensory:     array, sensory input (length nt)
+    - save_name:   str, name experiment to save figure
+    - save:        bool, whether to save figure
+    - is_supp:     bool, if True, save figure in supplementary folder
+    """
 
     fig, ax = plt.subplots(3, 3, figsize=(2.2, 1.8), dpi=DPI, gridspec_kw=dict(height_ratios=[1.5, 1.5, 1], wspace=0.15, hspace=0.35, bottom=0.1, right=0.95, top=0.95, left=0.2))
 
@@ -371,23 +431,19 @@ def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, buff
             ax[0, i].set(ylabel='act. (au)')
             ax[1, i].set(ylabel='act. (au)')
 
-    # scale bar:
-    # ax5[2, 2].plot([2, 4], [-0.6, -0.6], c='k', lw=2)
-    # from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
     # add rectangle to axis
     ax[2, 2].add_patch(plt.Rectangle((2, -0.6), 2, 0.2, facecolor='k', edgecolor='k', lw=0))
     ax[2, 2].text(3, -0.7, '2s', ha='center', va='top', color='k', fontsize=8)  
-    # scalebar = AnchoredSizeBar(ax5[2, 2].transData, 2, '2s', (), frameon=False)
-    # ax5[2, 2].add_artist(scalebar)
 
+    # saving
     if save:
-        fig.savefig(f"../results/figs/Naumann23_draft1/exp5-1_prediction-error_{save_name}.pdf", dpi=300)
+        file_path = SUPP_PATH if is_supp else FIG_PATH
+        fig.savefig(f"{file_path}fig6_mismatch_{save_name}.pdf", dpi=300)
         plt.close(fig)
 
 
-
-def plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, dur_stim):
+def unused_plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, dur_stim):
 
     fig, ax = plt.subplots(3, 1, dpi=DPI, figsize=(3.8, 2.5), gridspec_kw={'height_ratios': [1, 1, 1], 'wspace': 0.2, 'hspace': 0.2, 'right':0.8, 'top':0.95})
 
@@ -426,11 +482,42 @@ def plot_changes_bars(t, res_fp, res_op, res_up, prediction, sensory, buffer, du
         ax[1].set(ylabel=r'$\Delta$ IN act.', xticks=[], ylim=[-2.1, 2.1], yticks=[-2, 0, 2])
         ax[2].set(ylabel=r'$\Delta$ inh.', xticks=[0, 1, 2], ylim=[-4, 4.5], yticks=[-3, 0, 3], xticklabels=['P=S', 'P>S', 'P<S'])
 
-        
+
+def unused_get_exc_and_inh_inputs(model, res, xFF, ts, te):
+
+    som_inh_d = np.array(res['other']['dend_inh_SOM'][ts:te]).mean()
+    ndnf_inh_d = np.array(res['other']['dend_inh_NDNF'][ts:te]).mean()
+    pred_exc_d = xFF['D'][ts:te].mean()
+    pv_inh_s = (model.Ws['EP'] @ np.mean(res['rP'][ts:te], axis=0)).mean()
+    sens_exc_s = xFF['E'][ts:te].mean()
+
+    return som_inh_d, ndnf_inh_d, pred_exc_d, pv_inh_s, sens_exc_s
+
+
 if __name__ in "__main__":
 
-    exp501_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, noise=0.1, with_NDNF=True, xFF_NDNF=0, rNinit=4,
-                            with_wPN=False, b=0.15, save=False)
+    SAVE = True
+
+
+    # Figure 6: predictive coding example
+    # -----------------------------------
+    fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, plot_vary_NDNF_input=False)
+
+
+    # Supps to Fig 6
+    # --------------
+
+    # no presynaptic inhibition
+    fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, pre_inh=False, is_supp=True)
+
+    # NDNFs get prediction
+    fig6_predictive_coding(NDNF_act_strength=0.5, save=SAVE, NDNF_get_P=True, is_supp=True)
+
+    # with NDNF-to-PV inhibition
+    fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, with_wPN=True, is_supp=True)
+
+    # unused: no NDNFs
+    # fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, with_NDNF=False, is_supp=True)
 
     plt.show()
 
