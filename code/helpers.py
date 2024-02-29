@@ -54,3 +54,23 @@ def make_sine(nt, freq, plot=False):
         plt.figure(figsize=(3, 2), dpi=300)
         plt.plot(t, sine, lw=1, c='k')
     return sine
+
+
+def slice_dict(dic, ts, te):
+    """
+    Slice a dictionary of arrays.
+
+    Parameters:
+    - dic: dict, dictionary of arrays
+    - ts:  int, start index
+    - te:  int, end index
+
+    Returns:
+    - dic_new: dict, sliced dictionary
+    """
+
+    dic_new = dict()
+    for k in dic.keys():
+        dic_new[k] = dic[k][ts:te]
+
+    return dic_new
