@@ -1,8 +1,5 @@
 """
-Experiments 1: NDNF interneurons as part of the microcircuit.
-- paired recordings to show slow NDNF-mediated inhibition and unidirectional SOM-NDNF inhibition
-- 'imaging' of SOM boutons shows presynaptic inhibition mediated by NDNF interneurons
-- layer-specificity: only the outputs of SOMs in layer 1 are affected, not their outputs in deeper layers
+Experiments for Figure 3: Competition between SOM- and NDNF-mediated dendritic inhibition.
 """
 
 import numpy as np
