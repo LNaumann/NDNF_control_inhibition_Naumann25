@@ -305,6 +305,7 @@ def exp_fig5E_inh_change(mean_pop=False, w_hetero=True, pre_inh=True, noise=0.1,
 if __name__ in "__main__":
 
     SAVE = False
+    plot_supps = False
 
     # Figure 5: redistribution of inhibition in time
     # ----------------------------------------------
@@ -313,7 +314,7 @@ if __name__ in "__main__":
     exp_fig5B_IPSC_timescale(save=SAVE)
 
     # # Fig 5 C, D, E: responses of PC to SOM/NDNF stimulation depend on parameters and stimulus duration
-    exp_fig5CD_transient_signals(save=SAVE, plot_supp=True)
+    exp_fig5CD_transient_signals(save=SAVE, plot_supp=plot_supps)
     exp_fig5E_inh_change(save=SAVE, wDN=0.4)
     exp_fig5E_inh_change(save=SAVE, wDN=0.8)
 
