@@ -182,7 +182,7 @@ def fig6_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, with_NDN
     # saving
     if save:
         file_path = SUPP_PATH if is_supp else FIG_PATH
-        fig.savefig(file_path+'fig6_mismatch_inh_exc'+save_name_add+'.pdf', dpi=300)
+        fig.savefig(file_path+'exp_fig6_mismatch_inh_exc'+save_name_add+'.pdf', dpi=300)
         plt.close(fig)
 
 
@@ -219,7 +219,7 @@ def fig6_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, with_NDN
         # saving
         if save:
             file_path = SUPP_PATH if is_supp else FIG_PATH
-            fig2.savefig(f"{file_path}fig6_vary_NDNF_input{save_name_add}.pdf", dpi=300)
+            fig2.savefig(f"{file_path}exp_fig6_vary_NDNF_input{save_name_add}.pdf", dpi=300)
             plt.close(fig2)
 
 
@@ -423,7 +423,7 @@ def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, save
     # saving
     if save:
         file_path = SUPP_PATH if is_supp else FIG_PATH
-        fig.savefig(f"{file_path}fig6_mismatch_{save_name}.pdf", dpi=300)
+        fig.savefig(f"{file_path}exp_fig6_mismatch_{save_name}.pdf", dpi=300)
         plt.close(fig)
 
 
@@ -434,7 +434,7 @@ if __name__ in "__main__":
 
     # Figure 6: predictive coding example
     # -----------------------------------
-    fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, plot_vary_NDNF_input=False)
+    fig6_predictive_coding(NDNF_act_strength=1, save=SAVE, plot_vary_NDNF_input=True)
 
 
     if plot_supps:
