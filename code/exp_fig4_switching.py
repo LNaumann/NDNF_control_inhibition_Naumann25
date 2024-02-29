@@ -1,26 +1,29 @@
 """
-Experiments 2: Competition between NDNF interneurons and SOM outputs in layer 1.
-- some of this is already illustrated in exp1_microcircuit
-- in addition we here show that NDNF INs and SOM outputs can form a bistable mutual inhibition motif
-- this bistable mutual inhibition can function as a switch, allowing to switch between SOM- and NDNF-mediated inhibition
-- this switching is particularly relevant if NDNF and SOM carry distinct information (top-down vs bottom-up)
+Experiments for Figure 4: NDNF INs can act as a switch for dendritic inhibition.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
-plt.style.use('pretty')
-import matplotlib as mpl
-lw = mpl.rcParams['lines.linewidth']
-import model_base as mb
-from experiments import get_null_ff_input_arrays, get_model_colours, plot_violin
 import seaborn as sns
+import matplotlib as mpl
+import model_base as mb
+from helpers import get_null_ff_input_arrays, get_model_colours
 
+# optional custom style sheet
+if 'pretty' in plt.style.available:
+    plt.style.use('pretty')
+lw = mpl.rcParams['lines.linewidth']
+
+# get model colours
 cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 
+# figure path and settings
+FIG_PATH = '../results/figs/Naumann23_draft1/'
+SUPP_PATH = '../results/figs/Naumann23_draft1/supps/'
 DPI = 300
 
 
-def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, save=False, target_DN=False, target_VS=False):
+def exp_fig3BC_bistability(noise=0.1, w_hetero=True, mean_pop=False, pre_inh=True, save=False, target_DN=False, target_VS=False):
     """
     Check for bistability within the SOM-NDNF mutual inhibition motif. NDNF INs receive brief positive or
     negative input pulses and the NDNF rate is monitored. Vary the pulse strength and SOM-NDNF inhibition.
@@ -61,9 +64,10 @@ def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=Tru
     rNDNF = np.zeros((len(stim_NDNF), len(vals_wNS)))
 
     # loop over pulse strengths and SOM-NDNF inhibition
+    print(f"Running model with varying SOM-NDNF inhibition and NDNF stimulation...")
     for i, wNS in enumerate(vals_wNS):
 
-        print(f'wNS={wNS}')
+        print(f'\t - wNS={wNS:.2f}')
 
         w_mean['NS'] = wNS
         
@@ -100,15 +104,14 @@ def exp_fig3BC_bistability(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=Tru
     # Saving
     # ------
     if save:
-        savename = '../results/figs/Naumann23_draft1/exp2-2_bistability.pdf' if not isinstance(save, str) else save
-        if not pre_inh:
-            savename = savename.replace('.pdf', '_nopreinh.pdf')
+        pre_inh_str = '_with_pre_inh' if pre_inh else '_without_pre_inh'
+        savename = f"{FIG_PATH}exp_fig4BC_bistability{pre_inh_str}.pdf" if not isinstance(save, str) else save
         fig.savefig(savename, dpi=300)
         plt.close(fig)
 
 
-def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, save=False, noise=0.0, wNS=1.4, 
-                                  flag_sine=False, stimup=1, stimdown=-1, target_ND=False, target_VS=False):
+def exp_fig4DEF_mutual_inhibition(w_hetero=True, mean_pop=False, pre_inh=True, save=False, noise=0.1, wNS=1.4, 
+                                  flag_sine=False, stimup=0.5, stimdown=-0.5, target_DN=False, target_VS=False):
     """
     Check for bistability. NDNF INs receive a positive and a negative pulse. In a bistable regime, the NDNF rate
     is switched to higher or lower activity after the pulse. Plot IN rates and mean NDNF- and SOM-mediated dendritic
@@ -136,12 +139,12 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
 
     # increase NDNF-dendrite inhibition s.t. mean PC rate doesn't change when dendritic inhibition changes
     w_mean['DN'] = 0.6
-    if target_ND:
+    if target_DN:
         w_mean['DN'] = 0.8 # increase NDNF to dendrite inhibition further to compensate
 
     # instantiate model
     model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                           flag_pre_inh=pre_inh, flag_p_on_DN=target_ND, flag_p_on_VS=target_VS)
+                           flag_pre_inh=pre_inh, flag_p_on_DN=target_DN, flag_p_on_VS=target_VS)
 
     # simulation paramters
     dur = 10000
@@ -163,6 +166,7 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
         xFF['S'][:,:] += amp_sine*np.tile(sine[1000:], [N_cells['S'], 1]).T
 
     # run model
+    print(f"Running model with wNS={wNS} and sine={flag_sine}...")
     t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, calc_bg_input=True,
                                                            monitor_dend_inh=True, noise=noise)
 
@@ -253,164 +257,15 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=False, mean_pop=True, pre_inh=True, s
     if save:
         wNS_str = str(wNS).replace('.', 'p')
         if flag_sine:
-            fig.savefig(f'../results/figs/Naumann23_draft1/exp2-2_switch_sine_wNS-{wNS_str}_withPC.pdf', dpi=300)
-            fig2.savefig(f'../results/figs/Naumann23_draft1/exp2-2_switch_sine_zoom.pdf', dpi=300)
-            fig3.savefig(f'../results/figs/Naumann23_draft1/exp2-2_switch_sine_signal.pdf', dpi=300)
+            fig.savefig(f'{FIG_PATH}exp_fig4F_switch_sine_wNS-{wNS_str}_withPC.pdf', dpi=300)
+            fig2.savefig(f'{FIG_PATH}exp_fig4F_switch_sine_zoom.pdf', dpi=300)
+            fig3.savefig(f'{FIG_PATH}exp_fig4G_switch_sine_corr.pdf', dpi=300)
             plt.close(fig2)
             plt.close(fig3)
         else:
-            savename = f'../results/figs/Naumann23_draft1/exp2-2_switch_wNS-{wNS_str}.pdf' if not isinstance(save, str) else save
+            savename = f'{FIG_PATH}exp_fig4DE_switch_wNS-{wNS_str}.pdf' if not isinstance(save, str) else save
             fig.savefig(savename, dpi=300)
         plt.close(fig)
-
-
-def exp_unused_signaltransmission_pathways_NDNF(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, reduced=False, save=False):
-    """
-    Experiment 3a: Provide sine stimulus to NDNF INs, then vary the NDNF-PV inhibition and check what's represented in PC rate.
-    Depending on the balance if NDNF inhibition and disinhibition via PV, the sine is represented pos or neg in the PCs.
-    To account for delays introduced by slow timescale of NDNF and GABA spillover, the sine is shifted to assess its contribution.
-    - same arguements as functions above
-    """
-
-    # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
-    if reduced:  # remove 
-        w_mean['EP'], w_mean['PE'], w_mean['SE'] = 0, 0, 0
-
-    # simulation paramters
-    dur = 5000
-    dt = 1
-    nt = int(dur/dt)
-
-    # generate inputs
-    tt = np.arange(0, dur, dt)/1000
-    sine1 = np.sin(2*np.pi*tt*1)  # slow sine (1Hz)
-    sine2 = np.sin(2*np.pi*tt*4)  # fast sine (4Hz)
-    amp_sine = 1
-
-    xFF = get_null_ff_input_arrays(nt, N_cells)
-    xFF['N'][:,:] = amp_sine*np.tile(sine1, [N_cells['N'], 1]).T
-
-    # list of weights to test
-    wPN_list = np.arange(0, 1.3, 0.2)
-
-    signal_corr = np.zeros((len(wPN_list), 5)) # empty array for storage
-    shifts = np.array([1, 50, 100, 150, 200])
-
-    fig, ax = plt.subplots(1, 2, figsize=(4.5, 2), dpi=150, gridspec_kw={'left':0.1, 'bottom': 0.2, 'right': 0.95,
-                                                                        'wspace': 0.5})
-    cols = sns.color_palette("dark:salmon", n_colors=len(wPN_list))
-    cols_shift = sns.color_palette("dark:gold", n_colors=len(shifts))
-
-    for i, wPN in enumerate(wPN_list):
-
-        w_mean['PN'] = wPN
-        w_mean['DN'] = 0.7
-
-        # taus['N'] = 10
-        # w_mean['PE'], w_mean['SE'], w_mean['PP'] = 0, 0, 0
-
-        # instantiate model
-        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                            flag_pre_inh=pre_inh)#, tauG=10)
-
-        # run model
-        t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
-                                                               monitor_dend_inh=True, noise=noise)
-        
-        for j, shift in enumerate(shifts):
-            betas = quantify_signals([sine1[1000:-shift]], np.mean(rE, axis=1)[1000+shift:])
-            signal_corr[i, j] = betas[0]
-
-        ax[0].plot(t, rE, c=cols[i])
-    
-    # ax[0].plot(t+shift, sine1/4+1, c='goldenrod', lw=1)
-    [ax[1].plot(wPN_list*w_mean['EP']/w_mean['DN'], signal_corr[:,j], c=cols_shift[j]) for j in range(len(shifts))]
-    ax[1].set(xlabel='NDNF disinh/inh (wPN*wEP/wDN)', ylabel='signal strength')
-    ax[0].set(xlabel='time (ms)', ylabel='PC rate')
-
-
-def exp_unused_signaltransmission_pathways_SOM(noise=0.0, w_hetero=False, mean_pop=True, pre_inh=True, reduced=False, save=False):
-    """
-    Experiment 3a: Provide sine stimulus to SOM INs, then vary the NDNF-PV inhibition and check what's represented in PC rate.
-    Depending on the balance if SOM inhibition and disinhibition via PV, the sine is represented pos or neg in the PCs.
-    To account for delays introduced by slow integration of SOMs, the sine is shifted to assess its contribution.
-    - same arguements as functions above
-    """
-
-    # define parameter dictionaries
-    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
-
-    if reduced:  # remove 
-        w_mean['EP'], w_mean['PE'], w_mean['SE'] = 0, 0, 0
-
-    # w_mean['PE'], w_mean['SE'] = 0, 0
-
-    # simulation paramters
-    dur = 2000
-    dt = 1
-    nt = int(dur/dt)
-
-    # generate inputs
-    tt = np.arange(0, dur, dt)/1000
-    sine1 = np.sin(2*np.pi*tt*4)  # slow sine (1Hz)
-    sine2 = np.sin(2*np.pi*tt*4)  # fast sine (4Hz)
-    amp_sine = 1
-
-    xFF = get_null_ff_input_arrays(nt, N_cells)
-    # xFF['N'][:,:] = amp_sine*np.tile(sine1, [N_cells['N'], 1]).T
-    xFF['S'][:,:] = amp_sine*np.tile(sine1, [N_cells['S'], 1]).T
-
-    # list of weights to test
-    wPS_list = np.arange(0, 1.7, 0.2)
-
-    signal_corr = np.zeros((len(wPS_list), 5)) # empty array for storage
-    shifts = np.array([1, 20, 50]) # 100, 150, 200])
-
-    fig, ax = plt.subplots(1, 2, figsize=(4.5, 2), dpi=150, gridspec_kw={'left':0.1, 'bottom': 0.2, 'right': 0.95,
-                                                                        'wspace': 0.5})
-    cols = sns.color_palette("dark:mediumturquoise", n_colors=len(wPS_list))
-    cols_shift = sns.color_palette("dark:gold", n_colors=len(shifts))
-
-    for i, wPS in enumerate(wPS_list):
-
-        w_mean['PS'] = wPS
-        # w_mean['DN'] = 0.7
-
-        # taus['N'] = 10
-        # w_mean['PE'], w_mean['SE'], w_mean['PP'] = 0, 0, 0
-
-        # instantiate model
-        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
-                            flag_pre_inh=pre_inh)#, tauG=10)
-
-        # run model
-        t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, p0=0.5, init_noise=0, calc_bg_input=True,
-                                                               monitor_dend_inh=True, noise=noise)
-        
-        for j, shift in enumerate(shifts):
-            betas = quantify_signals([sine1[1000:-shift]], np.mean(rE, axis=1)[1000+shift:])
-            signal_corr[i, j] = betas[0]
-
-        ax[0].plot(t, rE, c=cols[i])
-    
-    # ax[0].plot(t+shift, sine1/4+1, c='goldenrod', lw=1)
-    [ax[1].plot(wPS_list*w_mean['EP']/w_mean['DS'], signal_corr[:,j], c=cols_shift[j]) for j in range(len(shifts))]
-    ax[1].set(xlabel='SOM disinh/inh (wPS*wEP/wDS)', ylabel='signal strength')
-    ax[0].set(xlabel='time (ms)', ylabel='PC rate')
-
-
-def quantify_signals(signals, rate, bias=False):
-    """ Quantify the signal using the regressors beta of a linear regression of the signals onto the rate."""
-
-    X = np.array(signals).reshape((len(signals), -1)).T
-    y = rate
-    if bias:
-        X = np.concatenate((np.ones((len(rate), 1)), X), axis=1)
-        return (np.linalg.inv(X.T@X)@(X.T@y))[1:]
-    else:
-        return np.linalg.inv(X.T@X)@(X.T@y)
 
 
 if __name__ in "__main__":
@@ -422,35 +277,28 @@ if __name__ in "__main__":
     # ---------------------------------------------
     
     #B&C: parameter sweep for quantification of switch regime
-    exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, save=SAVE, pre_inh=True)
+    exp_fig3BC_bistability(save=SAVE)
 
     # E: pulse input example (not bistable)
-    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=0.7, stimup=0.6, stimdown=-0.5,
-                                   save=SAVE)
+    exp_fig4DEF_mutual_inhibition(wNS=0.7, save=SAVE)
     
     # D: pulse input example (bistable)
-    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-                                  save=SAVE)
+    exp_fig4DEF_mutual_inhibition(wNS=1.2, save=SAVE)
 
     # F&G: switch with time-varying input to SOM
-    exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-                                 flag_sine=True, pre_inh=True, save=SAVE)
+    exp_fig4DEF_mutual_inhibition(wNS=1.2, flag_sine=True, save=SAVE)
 
     if plot_supps:
 
-    # Supplementary figures
+    # Supplementary Figures
     # ---------------------
 
         # Fig 3/4, Supp 1c/d: bistability with pre inh on NDNF-dendrite synapses
-        exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.5,
-                                    target_ND=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1c.pdf')
-        exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_VS=True,
-                            save=f'../results/figs/Naumann23_draft1/supps/fig34_supp1d.pdf')
+        exp_fig4DEF_mutual_inhibition(wNS=1.2, target_DN=True, save=f'{SUPP_PATH}fig34_supp1c.pdf')
+        exp_fig3BC_bistability(target_DN=True, save=f'{SUPP_PATH}fig34_supp1d.pdf')
         
         # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
-        exp_fig4DEF_mutual_inhibition(mean_pop=False, noise=0.1, w_hetero=True, wNS=1.2, stimup=0.6, stimdown=-0.4,
-                                    target_VS=True, save=f'../results/figs/Naumann23_draft1/supps/fig34_supp2c.pdf')
-        exp_fig3BC_bistability(mean_pop=False, noise=0.1, w_hetero=True, pre_inh=True, target_VS=True,
-                            save=f'../results/figs/Naumann23_draft1/supps/fig34_supp2d.pdf')
+        exp_fig4DEF_mutual_inhibition(wNS=1.2, stimdown=-0.4, target_VS=True, save=f'{SUPP_PATH}fig34_supp2c.pdf')
+        exp_fig3BC_bistability(target_VS=True, save=f'{SUPP_PATH}fig34_supp2d.pdf')
 
     plt.show()
