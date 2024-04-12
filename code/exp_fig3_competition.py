@@ -21,7 +21,7 @@ cPC, cPV, cSOM, cNDNF, cVIP, cpi = get_model_colours()
 # figure path and settings
 FIG_PATH = '../results/figs/Naumann23_draft1/'
 SUPP_PATH = '../results/figs/Naumann23_draft1/supps/'
-DPI = 300
+DPI = 150
 
 
 def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, pre_inh=True,
@@ -180,20 +180,173 @@ def exp_fig3bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=True, mea
         plt.close(fig) 
 
 
+def exp_XX_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, save=False):
+    """
+    Vary input to NDNF interneurons and pre inh strength, check how this affects NDNF inhibition to dendrite.
+
+    Parameters
+    - dur: duration of experiment (ms)
+    - dt: integration time step (ms)
+    - noise: level of white noise added to neural activity
+    - flag_w_hetero: whether to add heterogeneity to weight matrices
+    - save: if it's a string, name of the saved file, else if False nothing is saved
+    """
+
+    # extract number of timesteps
+    nt = int(dur / dt)
+
+    # get default parameters
+    N_cells, w_mean, conn_prob, bg_inputs, taus = mb.get_default_params(flag_mean_pop=mean_pop)
+    
+    # array for varying NDNF input
+    ndnf_input = np.arange(-1, 1, 0.05)  # 0.05
+    betas = [0, 0.5]  #np.linspace(0, 0.5, 2, endpoint=True)
+
+    # empty arrays for recording stuff
+    rN_inh_record = np.zeros((len(ndnf_input), len(betas)))
+
+    # set up figure
+    dpi = 300 if save else DPI
+    fig, ax = plt.subplots(2, 1, figsize=(1.8, 2.5), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.2, 'top': 0.95,
+                                                                           'right': 0.95}, sharex=True, sharey=True)
+    import seaborn as sns
+    cols = sns.color_palette(f"dark:{cpi}", n_colors=len(betas))
+
+
+
+    # loop over NDNF input and pre inh strength, simulate, record and plot
+    for j, bb in enumerate(betas):
+
+        print(f"beta: {bb:1.1f}")
+
+        # instantiate model
+        model = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                flag_pre_inh=True, b=bb)
+
+        for i, I_activate in enumerate(ndnf_input):
+
+            # create input (stimulation of NDNF)
+            xFF = get_null_ff_input_arrays(nt, N_cells)
+            xFF['N'][:, :] = I_activate
+
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                                   noise=noise)
+
+            # save stuff
+            rN_inh_record[i, j] = np.mean(other['dend_inh_NDNF'][-1]) #np.mean(rN[-1])
+
+        ax[0].plot(ndnf_input, rN_inh_record[:, j], c=cols[j], ls='-', label=f"{bb:1.1f}", lw=lw)
+    
+    ax[0].set(xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[-0.05, 1.1], yticks=[0, 1]) #, ylabel='NDNF-dend. inh. (au)')
+    # ax.legend(['no pre. inh.', 'pre. inh.'], loc=(0.05, 0.7), handlelength=1, frameon=False, fontsize=8)
+
+
+    # repeat the same as above but varying the SOM-NDNF inhibition strength
+
+    # set up figure
+    # dpi = 300 if save else DPI
+    # fig, ax = plt.subplots(1, 1, figsize=(1.8, 1.8), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
+                                                                        #    'right': 0.95}, sharex=True)
+
+    wNS_values = np.arange(0.5, 1.71, 0.2)
+    rN_inh_record2 = np.zeros((len(ndnf_input), len(wNS_values)))
+    rN_inh_record3 = np.zeros((len(ndnf_input), len(wNS_values)))
+    amplification_index = np.zeros(len(wNS_values))
+    cols = sns.color_palette(f"dark:{cSOM}", n_colors=len(wNS_values))    
+
+    for j, wNS in enumerate(wNS_values):
+
+        print(f"wNS: {wNS:1.1f}")
+
+        w_mean['NS'] = wNS
+
+        model_psi = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                    flag_pre_inh=True, b=betas[1])
+        model_null = mb.NetworkModel(N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, flag_w_hetero=w_hetero,
+                                    flag_pre_inh=True, b=betas[0])
+
+        for i, I_activate in enumerate(ndnf_input):
+
+            # create input (stimulation of NDNF)
+            xFF = get_null_ff_input_arrays(nt, N_cells)
+            xFF['N'][:, :] = I_activate
+
+            # run model with presynaptic inhibition
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model_psi.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                                       noise=noise)
+            rN_inh_record2[i, j] = np.mean(other['dend_inh_NDNF'][-1])
+
+            # run model without presynaptic inhibition
+            t, rE, rD, rS, rN, rP, rV, p, cGABA, other = model_null.run(dur, xFF, dt=dt, init_noise=0, monitor_dend_inh=True,
+                                                                        noise=noise)
+            rN_inh_record3[i, j] = np.mean(other['dend_inh_NDNF'][-1])
+
+        amplification_index[j] = get_amplification_index(ndnf_input, rN_inh_record2[:, j], rN_inh_record3[:, j])
+
+        ax[1].plot(ndnf_input, rN_inh_record2[:, j], c=cols[j], ls='-', label=f"{wNS:1.1f}", lw=lw)
+    
+    ax[1].set(xlabel=r'$\Delta$ NDNF input', xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[-0.05, 1.1], yticks=[0, 1])
+
+    # set only one ylabel for both axes
+    # ax[0].set(ylabel='NDNF-dend. inh. (au)')
+    # ax[1].set(ylabel='NDNF-dend. inh. (au)')
+    fig.supylabel('NDNF-dend. inh. (au)', fontsize=8)
+
+    fig3, ax3 = plt.subplots(1, 1, figsize=(1.8, 1.2), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.3, 'top': 0.95,
+                                                                            'right': 0.95}, sharex=True)
+    ax3.plot(wNS_values, amplification_index, '.-', c=cpi)
+    ax3.set(xlabel='SOM-NDNF inh.', ylabel='amplification', ylim=[0, 2.3], yticks=[0, 1, 2], xticks=[0.5, 1, 1.5])    
+
+    # saving
+    if save:
+        fig.savefig(f'{FIG_PATH}exp_fig3C_amplification.pdf', dpi=300)
+        fig3.savefig(f'{FIG_PATH}exp_fig3D_amp_index.pdf', dpi=300)
+        plt.close(fig)
+        plt.close(fig3)
+
+    
+def get_amplification_index(x, y, y_null, xmin=-0.3, xmax=0.3, plot_fit=False):
+
+    # fit a linear line to data x
+    ind_fit = np.logical_and(x >= xmin, x <= xmax)
+    p = np.polyfit(x[ind_fit], y[ind_fit], 1)
+    y_fit = np.polyval(p, x)
+
+    p_null = np.polyfit(x[ind_fit], y_null[ind_fit], 1)
+    y_fit_null = np.polyval(p_null, x)
+
+    if plot_fit:
+        fig, ax = plt.subplots(1,1)
+        ax.plot(x, y_fit, c='r')
+        ax.plot(x, y, 'o', c='k')
+        ax.plot(x, y_fit_null, c='blue')
+        ax.plot(x, y_null, 'o', c='silver')
+        ax.set(ylim=[0, 1.3])
+
+    # get amplification index
+    amplification_index = np.log2(p[0]/p_null[0])
+    # logarithm of base 2
+
+    return amplification_index
+
+
 if __name__ in "__main__":
 
-    SAVE = False
+    SAVE = True
     plot_supps = False
 
     # Figure 3: Competition for dendritic inhibition
 
-    # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
-    exp_fig3top_vary_NDNF_input(pre_inh=True, save=SAVE)
-    exp_fig3top_vary_NDNF_input(pre_inh=False, save=SAVE)
+    # # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
+    # exp_fig3top_vary_NDNF_input(pre_inh=True, save=SAVE)
+    # exp_fig3top_vary_NDNF_input(pre_inh=False, save=SAVE)
 
-    # Fig 3 (bottom): total dendritic inhibiion
-    exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
-    exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # # Fig 3 (bottom): total dendritic inhibiion
+    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+
+    # Fig 3 (new): amplification of NDNF inhibition
+    exp_XX_amplifcation_ndnf_inhibition(save=SAVE)
 
     if plot_supps:
 

@@ -5,6 +5,7 @@ Experiments on the network model.
 import numpy as np
 import matplotlib.pyplot as plt
 from model_base import get_default_params, NetworkModel
+from helpers import get_null_ff_input_arrays
 plt.style.use('pretty')
 
 # ToDo: make experiments classes?
@@ -17,6 +18,7 @@ cNDNF = '#E18E69'
 cVIP = '#D1BECF'
 cpi = '#A7C274'
 
+DPI = 300
 
 def exp_unused_preinh_bouton_imaging(dur=2000, ts=200, te=500, dt=1, stim_NDNF=1.5, w_hetero=True, mean_pop=False, pre_inh=True, noise=0.2, save=False):
     """
@@ -130,6 +132,7 @@ def exp_unused_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=False, mean
     dpi = 300 if save else DPI
     fig, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
                                                                            'right': 0.95}, sharex=True)
+    import seaborn as sns
     cols = sns.color_palette(f"dark:{cpi}", n_colors=len(betas))
 
     for j, bb in enumerate(betas):
