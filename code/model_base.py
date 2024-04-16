@@ -419,6 +419,7 @@ if __name__ in "__main__":
     ax[6].plot(t, cGABA, c=cpi, alpha=1)
     ax[7].plot(t, p, c=cpi, alpha=1)
 
+    # labels
     for i, label in enumerate(['PC', 'dend.', 'SOM', 'NDNF', 'VIP', 'PV', 'GABA']):
         ax[i].set(ylabel=label, ylim=[0, 3])
     ax[-1].set(ylabel='p', ylim=[0, 1], xlabel='time (ms)')
