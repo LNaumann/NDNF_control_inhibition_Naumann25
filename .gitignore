@@ -7,3 +7,6 @@ results/figs
 *.eps
 *.tif
 *.afdesign
+__pycache__
+paper/*
+*/old/*
