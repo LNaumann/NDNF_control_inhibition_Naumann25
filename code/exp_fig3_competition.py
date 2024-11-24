@@ -24,12 +24,13 @@ SUPP_PATH = '../results/figs/Naumann23_draft1/supps/'
 DPI = 150
 
 
-def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, pre_inh=True,
+def exp_fig3AB_top_vary_NDNF_input(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, pre_inh=True,
                                 target_ND=False, target_VS=False, save=False):
     """
     Vary input to NDNF interneurons, monitor NDNF- and SOM-mediated dendritic inhibition and their activity.
 
-    Parameters
+    Parameters:
+    -----------
     - dur: duration of experiment (ms)
     - dt: integration time step (ms)
     - w_hetero: whether to add heterogeneity to weight matrices
@@ -107,11 +108,12 @@ def exp_fig3top_vary_NDNF_input(dur=1500, dt=1, w_hetero=True, mean_pop=False, n
         plt.close(fig)
 
 
-def exp_fig3bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, pre_inh=True, save=False):
+def exp_fig3AB_bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, pre_inh=True, save=False):
     """
     Vary input to NDNF interneurons and NDNF->dendrite weight, check how this affects total dendritic inhibition.
 
-    Parameters
+    Parameters:
+    ----------
     - dur: duration of experiment (ms)
     - dt: integration time step (ms)
     - w_hetero: whether to add heterogeneity to weight matrices
@@ -180,11 +182,12 @@ def exp_fig3bottom_total_dendritic_inhibition(dur=1500, dt=1, w_hetero=True, mea
         plt.close(fig) 
 
 
-def exp_XX_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, save=False):
+def exp_fig3CD_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=False, noise=0.1, save=False):
     """
     Vary input to NDNF interneurons and pre inh strength, check how this affects NDNF inhibition to dendrite.
 
-    Parameters
+    Parameters:
+    ----------
     - dur: duration of experiment (ms)
     - dt: integration time step (ms)
     - noise: level of white noise added to neural activity
@@ -212,8 +215,6 @@ def exp_XX_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=
     import seaborn as sns
     cols = sns.color_palette(f"dark:{cpi}", n_colors=len(betas))
 
-
-
     # loop over NDNF input and pre inh strength, simulate, record and plot
     for j, bb in enumerate(betas):
 
@@ -237,17 +238,10 @@ def exp_XX_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=
 
         ax[0].plot(ndnf_input, rN_inh_record[:, j], c=cols[j], ls='-', label=f"{bb:1.1f}", lw=lw)
     
-    ax[0].set(xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[-0.05, 1.1], yticks=[0, 1]) #, ylabel='NDNF-dend. inh. (au)')
-    # ax.legend(['no pre. inh.', 'pre. inh.'], loc=(0.05, 0.7), handlelength=1, frameon=False, fontsize=8)
+    ax[0].set(xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[-0.05, 1.1], yticks=[0, 1])
 
 
     # repeat the same as above but varying the SOM-NDNF inhibition strength
-
-    # set up figure
-    # dpi = 300 if save else DPI
-    # fig, ax = plt.subplots(1, 1, figsize=(1.8, 1.8), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.25, 'top': 0.95,
-                                                                        #    'right': 0.95}, sharex=True)
-
     wNS_values = np.arange(0.5, 1.71, 0.2)
     rN_inh_record2 = np.zeros((len(ndnf_input), len(wNS_values)))
     rN_inh_record3 = np.zeros((len(ndnf_input), len(wNS_values)))
@@ -288,8 +282,6 @@ def exp_XX_amplifcation_ndnf_inhibition(dur=1500, dt=1, w_hetero=True, mean_pop=
     ax[1].set(xlabel=r'$\Delta$ NDNF input', xticks=[-1, 0, 1], xlim=[-1, 1], ylim=[-0.05, 1.1], yticks=[0, 1])
 
     # set only one ylabel for both axes
-    # ax[0].set(ylabel='NDNF-dend. inh. (au)')
-    # ax[1].set(ylabel='NDNF-dend. inh. (au)')
     fig.supylabel('NDNF-dend. inh. (au)', fontsize=8)
 
     fig3, ax3 = plt.subplots(1, 1, figsize=(1.8, 1.2), dpi=dpi, gridspec_kw={'left': 0.22, 'bottom': 0.3, 'top': 0.95,
@@ -325,28 +317,27 @@ def get_amplification_index(x, y, y_null, xmin=-0.3, xmax=0.3, plot_fit=False):
 
     # get amplification index
     amplification_index = np.log2(p[0]/p_null[0])
-    # logarithm of base 2
 
     return amplification_index
 
 
 if __name__ in "__main__":
 
-    SAVE = True
+    SAVE = False
     plot_supps = False
 
     # Figure 3: Competition for dendritic inhibition
 
-    # # Fig 3 (top): Layer-specificity of NDNF control (with & without pre inh)
-    # exp_fig3top_vary_NDNF_input(pre_inh=True, save=SAVE)
-    # exp_fig3top_vary_NDNF_input(pre_inh=False, save=SAVE)
+    # Fig 3 A&B (top): Layer-specificity of NDNF control (with & without pre inh)
+    exp_fig3AB_top_vary_NDNF_input(pre_inh=True, save=SAVE)
+    exp_fig3AB_top_vary_NDNF_input(pre_inh=False, save=SAVE)
 
-    # # Fig 3 (bottom): total dendritic inhibiion
-    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
-    # exp_fig3bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    # Fig 3 A&B (bottom): total dendritic inhibiion
+    exp_fig3AB_bottom_total_dendritic_inhibition(pre_inh=True, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
+    exp_fig3AB_bottom_total_dendritic_inhibition(pre_inh=False, mean_pop=False, w_hetero=True, noise=0.1, save=SAVE)
 
     # Fig 3 (new): amplification of NDNF inhibition
-    exp_XX_amplifcation_ndnf_inhibition(save=SAVE)
+    exp_fig3CD_amplifcation_ndnf_inhibition(save=SAVE)
 
     if plot_supps:
 
@@ -354,10 +345,10 @@ if __name__ in "__main__":
         # ---------------------
 
         # Fig 3/4, Supp 1b: competition with pre inh on NDNF-dendrite synapses
-        exp_fig3top_vary_NDNF_input(pre_inh=True, target_ND=True, save=f"{SUPP_PATH}fig34_supp1b.pdf")
+        exp_fig3AB_top_vary_NDNF_input(pre_inh=True, target_ND=True, save=f"{SUPP_PATH}fig34_supp1b.pdf")
 
         # Fig 3/4, Supp 2: competition with pre in on SOM-VIP synapses
-        exp_fig3top_vary_NDNF_input(pre_inh=True, target_VS=True, save=f"{SUPP_PATH}fig34_supp2b.pdf")
+        exp_fig3AB_top_vary_NDNF_input(pre_inh=True, target_VS=True, save=f"{SUPP_PATH}fig34_supp2b.pdf")
 
     plt.show()
  

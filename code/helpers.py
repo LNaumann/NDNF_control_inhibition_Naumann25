@@ -7,10 +7,12 @@ def get_null_ff_input_arrays(nt, N_cells):
     Generate empty arrays for feedforward input.
 
     Parameters:
+    ----------
     - nt: number of timesteps
     - N_cells: dictionary of cell numbers (soma E, dendrite E, SOMs S, NDNFs N, PVs P)
 
     Returns:
+    -------
     - dictionary with an empty array of size nt x #cell for each neuron type
     """
 
@@ -41,11 +43,13 @@ def make_sine(nt, freq, plot=False):
     Make a sine wave.
 
     Parameters:
+    ----------
     - nt: number of time points
     - freq: frequency of the sine wave
     - plot: whether to plot the sine wave
 
     Returns:
+    -------
     - sine wave as numpy array
     """
     t = np.arange(nt)/1000
@@ -61,11 +65,13 @@ def slice_dict(dic, ts, te):
     Slice a dictionary of arrays.
 
     Parameters:
+    ----------
     - dic: dict, dictionary of arrays
     - ts:  int, start index
     - te:  int, end index
 
     Returns:
+    -------
     - dic_new: dict, sliced dictionary
     """
 

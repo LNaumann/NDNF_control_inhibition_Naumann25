@@ -26,7 +26,7 @@ def fig6_predictive_coding(mean_pop=False, w_hetero=True, pre_inh=True, with_NDN
     Experiments to explore predictive coding microcircuit. Plots all panels for the paper (Fig. 6).
 
     Parameters:
-    -----------
+    ----------
     - mean_pop:   bool, if True, model mean population activity, if False, model single cell activity 
     - w_hetero:   bool, if True, model heterogenous weights, else homogeneous weights
     - pre_inh:    bool, if True, model presynaptic inhibition, else not
@@ -232,6 +232,7 @@ def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=
     - up (underpredicted = playback): only sensory input
 
     Parameters:
+    ----------
     - dur:          int, duration of one phase (ms)
     - model:        instance of NetworkModel as custuom python object
     - xFF:          dict, feedforward input to the model
@@ -249,6 +250,7 @@ def run_pc_phases(dur, model, xFF, rE0=1, rD0=0, rS0=4, rP0=4, rV0=4, rN0=4, p0=
     - noise:        float, noise level in the model (std of added Gaussian white noise)
 
     Returns:
+    -------
     - t:             array, time vector (s)
     - res_fp:        dict, results of the simulation for the fully predicted phase
     - res_op:        dict, results of the simulation for the overpredicted phase
@@ -289,6 +291,7 @@ def get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt):
     - up (underpredicted = playback): only sensory input
     
     Parameters:
+    ----------
     - amp_s:    float, amplitude of sensory input
     - amp_p:    float, amplitude of prediction input
     - dur_stim: int, duration of stimulus per phase (ms)
@@ -296,6 +299,7 @@ def get_s_and_p_inputs(amp_s, amp_p, dur_stim, buffer, nt):
     - nt:       int, number of time steps
 
     Returns:
+    -------
     - sensory:    array, sensory input (length nt)
     - prediction: array, prediction input (length nt)
     """
@@ -319,6 +323,7 @@ def plot_all_variables_all_phases(t, res_fp, res_op, res_up, prediction, sensory
     underpredicted=playback).
 
     Parameters:
+    ----------
     - t:           array, time vector (s)
     - res_fp:      dict, results of the simulation for the fully predicted phase
     - res_op:      dict, results of the simulation for the overpredicted phase
@@ -362,6 +367,7 @@ def plot_mismatch_responses(t, res_fp, res_op, res_up, prediction, sensory, save
     underpredicted=playback).
 
     Parameters:
+    ----------
     - t:           array, time vector (s)
     - res_fp:      dict, results of the simulation for the fully predicted phase
     - res_op:      dict, results of the simulation for the overpredicted phase

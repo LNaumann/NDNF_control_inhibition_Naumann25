@@ -30,6 +30,7 @@ def exp_fig3BC_bistability(noise=0.1, w_hetero=True, mean_pop=False, pre_inh=Tru
     Plot results.
 
     Parameters:
+    ----------
     - noise: level of white noise added to neural activity
     - w_hetero: whether to add heterogeneity to weight matrices
     - mean_pop: whether to use mean population parameters
@@ -110,7 +111,7 @@ def exp_fig3BC_bistability(noise=0.1, w_hetero=True, mean_pop=False, pre_inh=Tru
         plt.close(fig)
 
 
-def exp_fig4DEF_mutual_inhibition(w_hetero=True, mean_pop=False, pre_inh=True, save=False, noise=0.1, wNS=1.4, 
+def exp_fig4DEFG_mutual_inhibition(w_hetero=True, mean_pop=False, pre_inh=True, save=False, noise=0.1, wNS=1.4, 
                                   flag_sine=False, stimup=0.5, stimdown=-0.5, target_DN=False, target_VS=False):
     """
     Check for bistability. NDNF INs receive a positive and a negative pulse. In a bistable regime, the NDNF rate
@@ -118,6 +119,7 @@ def exp_fig4DEF_mutual_inhibition(w_hetero=True, mean_pop=False, pre_inh=True, s
     inhibition. If flag_sine is True, add a time-varying input to the SOM INs and check the PC rate.
 
     Parameters:
+    ----------
     - w_hetero: whether to add heterogeneity to weight matrices
     - mean_pop: whether to use mean population parameters
     - pre_inh: whether to include presynaptic inhibition
@@ -280,13 +282,13 @@ if __name__ in "__main__":
     exp_fig3BC_bistability(save=SAVE)
 
     # E: pulse input example (not bistable)
-    exp_fig4DEF_mutual_inhibition(wNS=0.7, save=SAVE)
+    exp_fig4DEFG_mutual_inhibition(wNS=0.7, save=SAVE)
     
     # D: pulse input example (bistable)
-    exp_fig4DEF_mutual_inhibition(wNS=1.2, save=SAVE)
+    exp_fig4DEFG_mutual_inhibition(wNS=1.2, save=SAVE)
 
     # F&G: switch with time-varying input to SOM
-    exp_fig4DEF_mutual_inhibition(wNS=1.2, flag_sine=True, save=SAVE)
+    exp_fig4DEFG_mutual_inhibition(wNS=1.2, flag_sine=True, save=SAVE)
 
     if plot_supps:
 
@@ -294,11 +296,11 @@ if __name__ in "__main__":
     # ---------------------
 
         # Fig 3/4, Supp 1c/d: bistability with pre inh on NDNF-dendrite synapses
-        exp_fig4DEF_mutual_inhibition(wNS=1.2, target_DN=True, save=f'{SUPP_PATH}fig34_supp1c.pdf')
+        exp_fig4DEFG_mutual_inhibition(wNS=1.2, target_DN=True, save=f'{SUPP_PATH}fig34_supp1c.pdf')
         exp_fig3BC_bistability(target_DN=True, save=f'{SUPP_PATH}fig34_supp1d.pdf')
         
         # Fig 3/4, Supp 2: bistability with pre in on SOM-VIP synapses
-        exp_fig4DEF_mutual_inhibition(wNS=1.2, stimdown=-0.4, target_VS=True, save=f'{SUPP_PATH}fig34_supp2c.pdf')
+        exp_fig4DEFG_mutual_inhibition(wNS=1.2, stimdown=-0.4, target_VS=True, save=f'{SUPP_PATH}fig34_supp2c.pdf')
         exp_fig3BC_bistability(target_VS=True, save=f'{SUPP_PATH}fig34_supp2d.pdf')
 
     plt.show()

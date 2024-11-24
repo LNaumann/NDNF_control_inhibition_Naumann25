@@ -29,7 +29,8 @@ def exp_fig5B_IPSC_timescale(dur=1000, dt=1, w_hetero=True, mean_pop=False, pre_
     Paired "in vitro" recordings and plot. Stimulate NDNF and SOM, record the 'currents' to PC to show the slower IPSC
     elicted by NDNFs compared to SOMs. "in vitro" means all cells have 0 baseline activity. 
 
-    Parameters
+    Parameters:
+    ----------
     - dur: length of experiment
     - dt: time step
     - w_hetero: whether to add heterogeneity to weight matrices
@@ -91,6 +92,7 @@ def exp_fig5CD_transient_signals(mean_pop=False, w_hetero=True, save=False, nois
     with weak and strong NDNF-dendrite inhibition.
 
     Parameters:
+    ----------
     - mean_pop: if true, simulate only one neuron (mean) per population
     - w_hetero: whether to add heterogeneity to weight matrices
     - save: whether to save the figure
@@ -225,6 +227,7 @@ def exp_fig5E_inh_change(mean_pop=False, w_hetero=True, pre_inh=True, noise=0.1,
     of different length and monitor the NDNF-dendrite, SOM-dendrite and PV-PC inhibition. Plot results.
 
     Parameters:
+    ----------
     - mean_pop: if true, simulate only one neuron (mean) per population
     - w_hetero: whether to add heterogeneity to weight matrices
     - pre_inh: whether to include presynaptic inhibition

@@ -8,36 +8,36 @@ import matplotlib.pyplot as plt
 
 
 class NetworkModel:
-    """
-    Class for network model with two-compartment PCs, SOMs, NDNFs and optionally PVs.
-
-    Parameters:
-    - N_cells:          dictionary with the number of cells for each cell type
-    - w_mean:           dictionary of mean weights for each synapse type
-    - conn_prob:        dictionary of connection probabilities between all neuron types
-    - taus:             dictionary of time constants
-    - bg_inputs:        dictionary of background inputs
-    - wED:              weight of the dendrite->soma coupling
-    - b:                presynaptic inhibition parameter
-    - r0:               lower threshold to activate presynaptic inhibition (default 0)
-    - p_low:            lower bound for release probability (default 0)
-    - taup:             time constant for presynaptic inhibition
-    - tauG:             time constant for GABA spillover
-    - gamma:            scaling factor for GABA spillover
-    - w_std_rel:        relative standard deviation of weights
-    - flag_w_hetero:    whether to add heterogeneity to weight matrices
-    - flag_pre_inh:     whether to include presynaptic inhibition
-    - flag_with_VIP:    whether to include VIPs
-    - flag_with_NDNF:   whether to include NDNFs
-    - flag_with_PV:     whether to include PVs
-    - flag_p_on_DN:     whether to include presynaptic inhibition on NDNF->dendrite synapses
-    - flag_p_on_VS:     whether to include presynaptic inhibition on SOM->VIP synapses
-    """
+    """Class for network model with two-compartment PCs, SOMs, NDNFs and optionally PVs."""
 
     def __init__(self, N_cells, w_mean, conn_prob, taus, bg_inputs, wED=1, b=0.5, r0=0, p_low=0, taup=100,
                  tauG=200, gamma=1, w_std_rel=0.1,
                  flag_w_hetero=False, flag_pre_inh=True, flag_with_VIP=True,
                  flag_with_NDNF=True, flag_with_PV=True, flag_p_on_DN=False, flag_p_on_VS=False):
+        """
+        Parameters:
+        ----------
+        - N_cells:          dictionary with the number of cells for each cell type
+        - w_mean:           dictionary of mean weights for each synapse type
+        - conn_prob:        dictionary of connection probabilities between all neuron types
+        - taus:             dictionary of time constants
+        - bg_inputs:        dictionary of background inputs
+        - wED:              weight of the dendrite->soma coupling
+        - b:                presynaptic inhibition parameter
+        - r0:               lower threshold to activate presynaptic inhibition (default 0)
+        - p_low:            lower bound for release probability (default 0)
+        - taup:             time constant for presynaptic inhibition
+        - tauG:             time constant for GABA spillover
+        - gamma:            scaling factor for GABA spillover
+        - w_std_rel:        relative standard deviation of weights
+        - flag_w_hetero:    whether to add heterogeneity to weight matrices
+        - flag_pre_inh:     whether to include presynaptic inhibition
+        - flag_with_VIP:    whether to include VIPs
+        - flag_with_NDNF:   whether to include NDNFs
+        - flag_with_PV:     whether to include PVs
+        - flag_p_on_DN:     whether to include presynaptic inhibition on NDNF->dendrite synapses
+        - flag_p_on_VS:     whether to include presynaptic inhibition on SOM->VIP synapses
+        """
 
         # network parameters
         self.N_cells = N_cells
@@ -135,10 +135,15 @@ class NetworkModel:
     
 
     def g_func(self, r):
-        """
-        Presynaptic inhibition transfer function.
-        :param r: input rate
-        :return: release probability p
+        """Presynaptic inhibition transfer function.
+
+        Parameters:
+        ----------
+        - r: input rate
+
+        Returns:
+        -------
+        - release probability p
         """
         return np.clip(1 - self.b * (r - self.r0), self.p_low, 1)
 
@@ -146,10 +151,12 @@ class NetworkModel:
     def run(self, dur, xFF, rE0=1, rS0=1, rN0=1, rP0=1, rD0=1, rV0=1, p0=0.5, init_noise=0.1, noise=0.1, dt=1,
             monitor_boutons=False, monitor_dend_inh=False, monitor_currents=False, calc_bg_input=True, scale_w_by_p=True, p_scale=None):
         """
-        Function to run the dynamics of the network. Returns arrays for time and neuron firing rates and a dictionary of
-        'other' things, such as currents.
+        Function to run the dynamics of the network.
+        
+        Returns arrays for time and neuron firing rates and a dictionary of 'other' things, such as currents.
 
         Parameters:
+        ----------
         - dur:              duration of stimulation (in ms)
         - xFF:              dictionary of inputs (FF or FB) to the cells ('E', 'D', 'P', 'S', 'N', 'V')
         - rE0:              initial rate for somatic compartment of PCs, also baseline rate if bg input calculated
@@ -170,6 +177,7 @@ class NetworkModel:
         - p_scale:          if not None, scale weights by this value
 
         Returns:
+        -------
         - t:                time array
         - rE:               array of rates of somatic compartments of PCs
         - rD:               array of activities of dendrites
@@ -335,9 +343,11 @@ def get_default_params(flag_mean_pop=False):
     Create dictionaries with default parameters.
 
     Parameters:
+    ----------
     - flag_mean_pop:   if true, all neuron numbers are set to 1 (= 'mean field picture')
 
     Returns:
+    -------
     - N_cells:          dictionary with the number of cells for each cell type
     - w_mean:           dictionary of mean weights for each synapse type
     - conn_prob:        dictionary of connection probabilities between all neuron types
@@ -368,6 +378,8 @@ def get_default_params(flag_mean_pop=False):
 
 
 if __name__ in "__main__":
+    
+    # Run an example network and plot dynamics
 
     # optional custom style sheet
     if 'pretty' in plt.style.available:
