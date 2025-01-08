@@ -1,10 +1,14 @@
 # Layer-specific control of inhibition by NDNF interneurons
 
-Publication code for Naumann et al., 2024
+Electrophysiological data, simulation and data analysis code for the publication Naumann et al., 2025
 
 ## Overview
 
-This repository contains the code for reproducing the computational experiments for the research article "Layer-specific control of inhibition by NDNF interneurons" (Naumann, Hertäg, Müller, Letzkus & Sprekeler, 2024).
+This repository contains the code for reproducing the computational experiments for the research article "Layer-specific control of inhibition by NDNF interneurons" (Naumann, Hertäg, Müller, Letzkus & Sprekeler, 2025).
+
+## Electrophysiological data
+
+The file `data_ephys.csv` contains the data from electrophysiological recordings presented in Figures 2, S1 and S2. Details are described in the file and in the publication.
 
 ## Network model
 
@@ -19,4 +23,4 @@ The scripts for running the experiments shown in the publication are `exp_fig...
 - Figure 5: `exp_fig5_timescale.py`
 - Figure 6: `exp_fig6_predictive_coding.py`
 
-At the bottom of each script the different methods are called and you can decide whether to save figures (set `SAVE=True`) and whether to plot the supplementary figures (set `plot_supps=True`). 
+At the bottom of each script the different methods are called and you can decide whether to save figures (set `SAVE=True`) and whether to plot the supplementary figures (set `plot_supps=True`).
